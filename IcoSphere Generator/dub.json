@@ -1,6 +1,6 @@
 {
-	"name": "test",
-	"description": "An Opengl 3.3 Game engine",
+	"name": "IcoSphere generator",
+	"description": "Loads an unorganized IcoSphere obj file and spits out organized Position/Normal/TextCoord arrays",
 	"copyright": "Copyright © 2016, Mathieu Roux",
 	"authors": ["Mathieu Roux"],
 
