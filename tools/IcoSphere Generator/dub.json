@@ -1,5 +1,9 @@
 {
+<<<<<<< HEAD
 	"name": "icosphere_generator",
+=======
+	"name": "IcoSphere generator",
+>>>>>>> origin/master
 	"description": "Loads an unorganized IcoSphere obj file and spits out organized Position/Normal/TextCoord arrays",
 	"copyright": "Copyright © 2016, Mathieu Roux",
 	"authors": ["Mathieu Roux"],
