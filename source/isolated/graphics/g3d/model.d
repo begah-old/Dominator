@@ -1,7 +1,6 @@
 ﻿module isolated.graphics.g3d.model;
 
 import std.typecons;
-import core.internal.abort;
 
 import isolated.graphics.mesh;
 import isolated.graphics.texture;

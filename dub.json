@@ -1,6 +1,6 @@
 {
-	"name": "isolated",
-	"description": "An Opengl 3.3 Game engine",
+	"name": "dominator",
+	"description": "3D game revolving around planets and survival",
 	"copyright": "Copyright © 2016, Mathieu Roux",
 	"authors": ["Mathieu Roux"],
     

@@ -1,6 +1,7 @@
 ﻿module isolated.math;
 
 public import isolated.math.ray;
+public import isolated.math.icosphere;
 
 public import gl3n.linalg;
 public import gl3n.plane;

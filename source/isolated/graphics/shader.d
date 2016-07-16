@@ -2,7 +2,6 @@
 
 import std.stdio;
 import std.string;
-import core.internal.abort;
 import std.regex;
 import std.conv;
 

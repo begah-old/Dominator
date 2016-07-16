@@ -57,8 +57,9 @@ class Planet {
     icoSphere = new IcoSphere(5);
 
     Mesh mesh = new Mesh();
-    float[] ss = cast(float[])icoSphere.verts;
-    mesh.add(VertexAttribute.Position.add(ss));
+    mesh.add(VertexAttribute.Position.add(cast(float[])icoSphere.positions));
+	mesh.add(VertexAttribute.Normal.add(cast(float[])icoSphere.normals));
+	mesh.add(VertexAttribute.TexCoords.add(cast(float[])icoSphere.texturecoords));
     mesh.generate(shader);
 
     return mesh;
@@ -67,9 +68,9 @@ class Planet {
   void key(int key, int action, int mods) nothrow {
 	if(key == GLFW_KEY_I && action) {
 		Logger.info("INFO");
-		Logger.info(icoSphere.verts[(level - 1) * 3]);
+		/*Logger.info(icoSphere.verts[(level - 1) * 3]);
 		Logger.info(icoSphere.verts[(level - 1) * 3 + 1]);
-		Logger.info(icoSphere.verts[(level - 1) * 3 + 2]);
+		Logger.info(icoSphere.verts[(level - 1) * 3 + 2]);*/
 	}
   }
 
@@ -90,7 +91,7 @@ class Planet {
     }
 
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-		glDrawArrays(GL_TRIANGLES, start, count);
+	glDrawArrays(GL_TRIANGLES, start, count);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
     glBindVertexArray(0);

@@ -7,7 +7,7 @@ import isolated.utils.logger;
 private {
 	File[string] files;
 
-	string Asset_Path = "C:/Users/Mathieu Roux/Documents/D Workspace/isolated/assets/";
+	string Asset_Path = "C:/Users/Begah/Documents/Dominator/assets/";
 }
 
 @safe nothrow:

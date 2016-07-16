@@ -13,7 +13,6 @@ class Game {
 
   this() {
     camera = new PerspectiveCamera(window.screenDimension);
-	camera.rotate(0, PI_2);
     new CameraController(camera, window);
 
     planet = new Planet(vec3(0));

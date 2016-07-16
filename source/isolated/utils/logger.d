@@ -1,6 +1,6 @@
 ﻿module isolated.utils.logger;
 
-public import core.internal.abort;
+import Abort = core.internal.abort;
 import std.stdio;
 import std.exception;
 import std.conv;
@@ -47,4 +47,11 @@ struct Logger
 			abort("Fatal Error : " ~ collectExceptionMsg(ex));
 		}
 	}
+}
+
+void abort(T)(T value = "", string filename = __FILE__, size_t line = __LINE__) @trusted nothrow {
+	Logger.error(value, filename, line);
+	try { readln(); }
+	catch(Exception ex) {}
+	Abort.abort("");
 }

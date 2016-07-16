@@ -1,4 +1,4 @@
-module isosphere;
+module icosphere;
 
 import std.conv;
 import std.stdio;
@@ -26,7 +26,7 @@ struct Vertex {
 }
 
 Vertex[] ReadFile(int subdivisionLevel) {
-  File f = File("C:/Users/Mathieu Roux/Documents/D Workspace/Test/assets/" ~ to!string(subdivisionLevel) ~ ".obj");
+  File f = File("C:/Users/Begah/Documents/Dominator/tools/IcoSphere Generator/assets/" ~ to!string(subdivisionLevel) ~ ".obj");
 
   vec3[] vertices, normals;
   vec2[] textcoords;
@@ -130,126 +130,123 @@ class IsoSphere {
 
     Vertex[] unorganizedVertices = ReadFile(subdivisionLevel);
 
-    vertices = new Vertex[unorganizedVertices.length / 2];
-
-    bool skip(Vertex v1, Vertex v2, Vertex v3) {
-      return (v1.position.y + v2.position.y + v3.position.y) < 0;
-    }
+    vertices = new Vertex[unorganizedVertices.length];
 
     for(int _i = 0; _i < unorganizedVertices.length; _i += 3) {
-      if(skip(unorganizedVertices[_i], unorganizedVertices[_i + 1], unorganizedVertices[_i + 2]) || unorganizedVertices[_i + 2].position.y != 1) continue;
+		if(unorganizedVertices[_i + 2].position.y != 1) continue;
 
-			void workLevel(int level) {
-				void writeTriangle(int index, Vertex v1, Vertex v2, Vertex vother) { // Write and organised triangle to verts. v1 and v2 are considered the vertices shared with previous triangle
-					float len1 = abs(v1.position.xz.magnitude - vother.position.xz.magnitude);
-					float len2 = abs(v2.position.xz.magnitude - vother.position.xz.magnitude);
+		void workLevel(int level) {
+			void writeTriangle(int index, Vertex v1, Vertex v2, Vertex vother) { // Write and organised triangle to verts. v1 and v2 are considered the vertices shared with previous triangle
+				float len1 = abs(v1.position.xz.magnitude - vother.position.xz.magnitude);
+				float len2 = abs(v2.position.xz.magnitude - vother.position.xz.magnitude);
 
-					if(len1 > len2) {
-						vertices[index] = v2;
-						vertices[index + 1] = vother;
-						vertices[index  +2] = v1;
-					} else {
-						vertices[index] = v1;
-						vertices[index + 1] = vother;
-						vertices[index  +2] = v2;
-					}
+				if(len1 > len2) {
+					vertices[index] = v2;
+					vertices[index + 1] = vother;
+					vertices[index  +2] = v1;
+				} else {
+					vertices[index] = v1;
+					vertices[index + 1] = vother;
+					vertices[index  +2] = v2;
+				}
+			}
+
+			if(level != 1) {
+				// Find triangle that is connected to above triangle
+				int index = getLevelIndex(level - 1) * 3;
+
+				Vertex base1, base2, point; // Base and the last vertices of the triange to connect too
+
+				float len1 = abs(vertices[index].position.y - vertices[index + 1].position.y);
+				float len2 = abs(vertices[index].position.y - vertices[index + 2].position.y);
+				float len3 = abs(vertices[index + 1].position.y - vertices[index + 2].position.y);
+
+				if(len1 < len2 && len1 < len3) {
+					base1 = vertices[index];
+					base2 = vertices[index + 1];
+					point = vertices[index + 2];
+				} else if(len2 < len1 && len2 < len3) {
+					base1 = vertices[index];
+					base2 = vertices[index + 2];
+					point = vertices[index + 1];
+				} else {
+					base1 = vertices[index + 1];
+					base2 = vertices[index + 2];
+					point = vertices[index];
 				}
 
-				if(level != 1) {
-					// Find triangle that is connected to above triangle
-					int index = getLevelIndex(level - 1) * 3;
+				if(base1.position.y > point.position.y && base2.position.y > point.position.y) { // Only a point to work with ( Triangle is downwards )
+					Logger.info("Level : " ~ to!string(level) ~ " is connected too one point");
+					index = getLevelIndex(level) * 3;
 
-					Vertex base1, base2, point; // Base and the last vertices of the triange to connect too
+					for(int i = 0; i < unorganizedVertices.length; i += 3) {
+						if(point.position != unorganizedVertices[i + 2].position || !almost_equal(unorganizedVertices[i].position.y, unorganizedVertices[i + 1].position.y, 0.001f)) continue;
 
-					float len1 = abs(vertices[index].position.y - vertices[index + 1].position.y);
-					float len2 = abs(vertices[index].position.y - vertices[index + 2].position.y);
-					float len3 = abs(vertices[index + 1].position.y - vertices[index + 2].position.y);
-
-					if(len1 < len2 && len1 < len3) {
-						base1 = vertices[index];
-						base2 = vertices[index + 1];
-						point = vertices[index + 2];
-					} else if(len2 < len1 && len2 < len3) {
-						base1 = vertices[index];
-						base2 = vertices[index + 2];
-						point = vertices[index + 1];
-					} else {
-						base1 = vertices[index + 1];
-						base2 = vertices[index + 2];
-						point = vertices[index];
+						vertices[index] = unorganizedVertices[i];
+						vertices[index + 1] = unorganizedVertices[i + 1];
+						vertices[index + 2] = unorganizedVertices[i + 2];
+						break;
 					}
+				} else { // Two points to work with ( Triangle is upwards )
+					Logger.info("Level : " ~ to!string(level) ~ " is connected too two points");
+					index = getLevelIndex(level) * 3;
 
-					if(base1.position.y > point.position.y && base2.position.y > point.position.y) { // Only a point to work with ( Triangle is downwards )
-						Logger.info("Level : " ~ to!string(level) ~ " is connected too one point");
-						index = getLevelIndex(level) * 3;
+					for(int i = 0; i < unorganizedVertices.length; i += 3) {
+						int hasBase1 = base1.position.among(unorganizedVertices[i].position, unorganizedVertices[i + 1].position, unorganizedVertices[i + 2].position);
+						int hasBase2 = base2.position.among(unorganizedVertices[i].position, unorganizedVertices[i + 1].position, unorganizedVertices[i + 2].position);
+						int hasNotOther = point.position.among(unorganizedVertices[i].position, unorganizedVertices[i + 1].position, unorganizedVertices[i + 2].position);
+						if(hasBase1 && hasBase2 && hasNotOther == 0) {
+							vertices[index] = unorganizedVertices[i + (hasBase1 - 1)];
+							vertices[index + 2] = unorganizedVertices[i + (hasBase2 - 1)];
 
-						for(int i = 0; i < unorganizedVertices.length; i += 3) {
-							if(point.position != unorganizedVertices[i + 2].position || !almost_equal(unorganizedVertices[i].position.y, unorganizedVertices[i + 1].position.y, 0.001f)) continue;
-
-							vertices[index] = unorganizedVertices[i];
-							vertices[index + 1] = unorganizedVertices[i + 1];
-							vertices[index + 2] = unorganizedVertices[i + 2];
+							if(hasBase1 != 1 && hasBase2 != 1) vertices[index + 1] = unorganizedVertices[i];
+							if(hasBase1 != 2 && hasBase2 != 2) vertices[index + 1] = unorganizedVertices[i + 1];
+							if(hasBase1 != 3 && hasBase2 != 3) vertices[index + 1] = unorganizedVertices[i + 2];
 							break;
 						}
-					} else { // Two points to work with ( Triangle is upwards )
-						Logger.info("Level : " ~ to!string(level) ~ " is connected too two points");
-						index = getLevelIndex(level) * 3;
-
-						for(int i = 0; i < unorganizedVertices.length; i += 3) {
-							int hasBase1 = base1.position.among(unorganizedVertices[i].position, unorganizedVertices[i + 1].position, unorganizedVertices[i + 2].position);
-							int hasBase2 = base2.position.among(unorganizedVertices[i].position, unorganizedVertices[i + 1].position, unorganizedVertices[i + 2].position);
-							int hasNotOther = point.position.among(unorganizedVertices[i].position, unorganizedVertices[i + 1].position, unorganizedVertices[i + 2].position);
-							if(hasBase1 && hasBase2 && hasNotOther == 0) {
-								vertices[index] = unorganizedVertices[i + (hasBase1 - 1)];
-								vertices[index + 2] = unorganizedVertices[i + (hasBase2 - 1)];
-
-								if(hasBase1 != 1 && hasBase2 != 1) vertices[index + 1] = unorganizedVertices[i];
-								if(hasBase1 != 2 && hasBase2 != 2) vertices[index + 1] = unorganizedVertices[i + 1];
-								if(hasBase1 != 3 && hasBase2 != 3) vertices[index + 1] = unorganizedVertices[i + 2];
-								break;
-							}
-						}
-					}
-				}
-
-				// Fill up level
-				int index = getLevelIndex(level) * 3;
-				int size = getLevelSize(level);
-
-				Loop : foreach(i; 1..size) {
-					Vertex vother = vertices[index + (i - 1) * 3];
-					Vertex v1 = vertices[index + (i - 1) * 3 + 1];
-					Vertex v2 = vertices[index + (i - 1) * 3 + 2];
-
-					for(int i2 = 0; i2 < unorganizedVertices.length; i2 += 3) {
-            int hasV1 = v1.position.among(unorganizedVertices[i2].position, unorganizedVertices[i2 + 1].position, unorganizedVertices[i2 + 2].position);
-            int hasV2 = v2.position.among(unorganizedVertices[i2].position, unorganizedVertices[i2 + 1].position, unorganizedVertices[i2 + 2].position);
-            int hasOther = vother.position.among(unorganizedVertices[i2].position, unorganizedVertices[i2 + 1].position, unorganizedVertices[i2 + 2].position);
-						if(hasV1 && hasV2 && hasOther == 0) {
-							Vertex other;
-						  if(hasV1 != 1 && hasV2 != 1)
-							  other = unorganizedVertices[i2];
-							else if(hasV1 != 2 && hasV2 != 2)
-								other = unorganizedVertices[i2 + 1];
-							else
-								other = unorganizedVertices[i2 + 2];
-
-							writeTriangle(index + i * 3, unorganizedVertices[i2 + (hasV1 - 1)], unorganizedVertices[i2 + (hasV2 - 1)], other);
-							continue Loop;
-						}
 					}
 				}
 			}
 
-			vertices[0] = unorganizedVertices[_i];
-			vertices[1] = unorganizedVertices[_i + 1];
-			vertices[2] = unorganizedVertices[_i + 2];
+			// Fill up level
+			int index = getLevelIndex(level) * 3;
+			int size = getLevelSize(level);
 
-			foreach(level; 1..this.levelCount+1) {
-				workLevel(level);
+			Loop : foreach(i; 1..size) {
+				Vertex vother = vertices[index + (i - 1) * 3];
+				Vertex v1 = vertices[index + (i - 1) * 3 + 1];
+				Vertex v2 = vertices[index + (i - 1) * 3 + 2];
+
+				for(int i2 = 0; i2 < unorganizedVertices.length; i2 += 3) {
+					int hasV1 = v1.position.among(unorganizedVertices[i2].position, unorganizedVertices[i2 + 1].position, unorganizedVertices[i2 + 2].position);
+					int hasV2 = v2.position.among(unorganizedVertices[i2].position, unorganizedVertices[i2 + 1].position, unorganizedVertices[i2 + 2].position);
+					int hasOther = vother.position.among(unorganizedVertices[i2].position, unorganizedVertices[i2 + 1].position, unorganizedVertices[i2 + 2].position);
+					
+					if(hasV1 && hasV2 && hasOther == 0) {
+						Vertex other;
+						if(hasV1 != 1 && hasV2 != 1)
+							other = unorganizedVertices[i2];
+						else if(hasV1 != 2 && hasV2 != 2)
+							other = unorganizedVertices[i2 + 1];
+						else
+							other = unorganizedVertices[i2 + 2];
+
+						writeTriangle(index + i * 3, unorganizedVertices[i2 + (hasV1 - 1)], unorganizedVertices[i2 + (hasV2 - 1)], other);
+						continue Loop;
+					}
+				}
 			}
-			break;
 		}
+
+		vertices[0] = unorganizedVertices[_i];
+		vertices[1] = unorganizedVertices[_i + 1];
+		vertices[2] = unorganizedVertices[_i + 2];
+
+		foreach(level; 1..this.levelCount+1) {
+			workLevel(level);
+		}
+		break;
+	}
   }
 
   /* Calculate where the triangle is in memory */
