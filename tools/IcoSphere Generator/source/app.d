@@ -16,11 +16,7 @@ int main() {
 	Start:
 	IsoSphere s = new IsoSphere(subdivisionLevel);
 
-<<<<<<< HEAD
 	File file = File("C:/Users/Begah/Documents/Dominator/tools/IcoSphere Generator/assets/" ~ "out" ~ to!string(subdivisionLevel) ~ ".txt", "w");
-=======
-	File file = File("C:/Users/Begah/Documents/Dominator/IcoSphere Generator/assets/" ~ "out" ~ to!string(subdivisionLevel) ~ ".txt", "w");
->>>>>>> origin/master
 
 	auto pos = s.vertices.map!(a => a.position).array;
 
@@ -59,9 +55,6 @@ int main() {
 		goto Start;
 	}
 
-<<<<<<< HEAD
 	readln();
-=======
->>>>>>> origin/master
 	return 0;
 }

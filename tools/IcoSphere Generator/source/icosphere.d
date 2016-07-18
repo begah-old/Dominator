@@ -26,11 +26,7 @@ struct Vertex {
 }
 
 Vertex[] ReadFile(int subdivisionLevel) {
-<<<<<<< HEAD:tools/IcoSphere Generator/source/icosphere.d
   File f = File("C:/Users/Begah/Documents/Dominator/tools/IcoSphere Generator/assets/" ~ to!string(subdivisionLevel) ~ ".obj");
-=======
-  File f = File("C:/Users/Begah/Documents/Dominator/IcoSphere Generator/assets/" ~ to!string(subdivisionLevel) ~ ".obj");
->>>>>>> origin/master:tools/IcoSphere Generator/source/icosphere.d
 
   vec3[] vertices, normals;
   vec2[] textcoords;
@@ -135,16 +131,10 @@ class IsoSphere {
     Vertex[] unorganizedVertices = ReadFile(subdivisionLevel);
 
     vertices = new Vertex[unorganizedVertices.length];
-<<<<<<< HEAD:tools/IcoSphere Generator/source/icosphere.d
 
     for(int _i = 0; _i < unorganizedVertices.length; _i += 3) {
 		if(unorganizedVertices[_i + 2].position.y != 1) continue;
 
-=======
-
-
-    for(int _i = 0; _i < unorganizedVertices.length; _i += 3) {
->>>>>>> origin/master:tools/IcoSphere Generator/source/icosphere.d
 		void workLevel(int level) {
 			void writeTriangle(int index, Vertex v1, Vertex v2, Vertex vother) { // Write and organised triangle to verts. v1 and v2 are considered the vertices shared with previous triangle
 				float len1 = abs(v1.position.xz.magnitude - vother.position.xz.magnitude);
@@ -228,16 +218,10 @@ class IsoSphere {
 				Vertex v2 = vertices[index + (i - 1) * 3 + 2];
 
 				for(int i2 = 0; i2 < unorganizedVertices.length; i2 += 3) {
-<<<<<<< HEAD:tools/IcoSphere Generator/source/icosphere.d
 					int hasV1 = v1.position.among(unorganizedVertices[i2].position, unorganizedVertices[i2 + 1].position, unorganizedVertices[i2 + 2].position);
 					int hasV2 = v2.position.among(unorganizedVertices[i2].position, unorganizedVertices[i2 + 1].position, unorganizedVertices[i2 + 2].position);
 					int hasOther = vother.position.among(unorganizedVertices[i2].position, unorganizedVertices[i2 + 1].position, unorganizedVertices[i2 + 2].position);
 					
-=======
-		int hasV1 = v1.position.among(unorganizedVertices[i2].position, unorganizedVertices[i2 + 1].position, unorganizedVertices[i2 + 2].position);
-		int hasV2 = v2.position.among(unorganizedVertices[i2].position, unorganizedVertices[i2 + 1].position, unorganizedVertices[i2 + 2].position);
-		int hasOther = vother.position.among(unorganizedVertices[i2].position, unorganizedVertices[i2 + 1].position, unorganizedVertices[i2 + 2].position);
->>>>>>> origin/master:tools/IcoSphere Generator/source/icosphere.d
 					if(hasV1 && hasV2 && hasOther == 0) {
 						Vertex other;
 						if(hasV1 != 1 && hasV2 != 1)

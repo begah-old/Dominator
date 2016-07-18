@@ -41,20 +41,18 @@ class Planet {
 
   void scroll(double x, double y) nothrow {
     level -= cast(int)y;
-	  
 
-    /*if(level > icoSphere.levelCount)
+    if(level > icoSphere.levelCount)
       level = 1;
     if(level < 0)
-      level = icoSphere.levelCount;*/
+      level = icoSphere.levelCount;
 	
 	Logger.info(level);
-    //Logger.info(to!string(icoSphere.getLevelIndex(level)) ~ " / " ~ to!string(icoSphere.getLevelSize(level)));
-	//level+=3;
+    Logger.info(to!string(icoSphere.getLevelIndex(level)) ~ " / " ~ to!string(icoSphere.getLevelSize(level)));
   }
 
   Mesh constructPlanet() {
-    icoSphere = new IcoSphere(5);
+    icoSphere = new IcoSphere(3);
 
     Mesh mesh = new Mesh();
     mesh.add(VertexAttribute.Position.add(cast(float[])icoSphere.positions));
@@ -68,9 +66,6 @@ class Planet {
   void key(int key, int action, int mods) nothrow {
 	if(key == GLFW_KEY_I && action) {
 		Logger.info("INFO");
-		/*Logger.info(icoSphere.verts[(level - 1) * 3]);
-		Logger.info(icoSphere.verts[(level - 1) * 3 + 1]);
-		Logger.info(icoSphere.verts[(level - 1) * 3 + 2]);*/
 	}
   }
 
@@ -86,8 +81,8 @@ class Planet {
       start = 0;
       count = mesh.vertexCount;
     } else {
-      start = (level - 1) * 3;//icoSphere.getLevelIndex(level) * 3;
-      count = 3;//icoSphere.getLevelSize(level) * 3;
+      start = icoSphere.getLevelIndex(level) * 3;
+      count = icoSphere.getLevelSize(level) * 3;
     }
 
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
