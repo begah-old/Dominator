@@ -52,125 +52,144 @@ class Shader
 	}
 
 	this(const(char)[] vertexSource, const(char)[]
-		fragmentSource, bool analyze = true) {
-		GLuint vertexShader, fragmentShader;
-		GLint Linked;
+		fragmentSource, bool analyze = true) nothrow {
+		
+		try {
+			GLuint vertexShader, fragmentShader;
+			GLint Linked;
 
-		vertexShader = compilePiece(cast(char *)vertexSource, GL_VERTEX_SHADER);
+			checkError();
 
-		if(vertexShader == 0) {
-			return;
-		}
+			vertexShader = compilePiece(cast(char *)vertexSource, GL_VERTEX_SHADER);
 
-		fragmentShader = compilePiece(cast(char *)fragmentSource, GL_FRAGMENT_SHADER);
+			checkError();
 
-		if(fragmentShader == 0) {
-			return;
-		}
-
-		id = glCreateProgram();
-
-		if(id == 0)
-			abort("Could not create shader program");
-
-		glAttachShader(id, vertexShader);
-		glAttachShader(id, fragmentShader);
-
-		checkError();
-
-		glLinkProgram(id);
-
-		glGetProgramiv(id, GL_LINK_STATUS, &Linked);
-
-		if(!Linked)
-		{
-			GLint infoLen = 0;
-			glGetProgramiv(id, GL_INFO_LOG_LENGTH, &infoLen);
-
-			if(infoLen > 1)
-			{
-				char[] infoLog = new char[infoLen + 50];
-
-				glGetProgramInfoLog(id, infoLen, null, cast(char *)infoLog);
-				abort("error linking program : " ~ to!string(infoLog));
+			if(vertexShader == 0) {
+				return;
 			}
 
-			glDeleteProgram(id);
-			id = GLuint.init;
+			fragmentShader = compilePiece(cast(char *)fragmentSource, GL_FRAGMENT_SHADER);
 
-			return;
-		}
+			checkError();
 
-		checkError();
+			if(fragmentShader == 0) {
+				return;
+			}
 
-		if(analyze) { // Analyze shader to determine attributes
-			analyzeAttributes(vertexSource);
-			analyzeTextureSamplers(fragmentSource);
-		}
+			id = glCreateProgram();
+
+			if(id == 0)
+				abort("Could not create shader program");
+
+			checkError();
+
+			glAttachShader(id, vertexShader);
+			glAttachShader(id, fragmentShader);
+
+			checkError();
+
+			glLinkProgram(id);
+
+			glGetProgramiv(id, GL_LINK_STATUS, &Linked);
+
+			if(!Linked)
+			{
+				GLint infoLen = 0;
+				glGetProgramiv(id, GL_INFO_LOG_LENGTH, &infoLen);
+
+				if(infoLen > 1)
+				{
+					char[] infoLog = new char[infoLen + 50];
+
+					glGetProgramInfoLog(id, infoLen, null, cast(char *)infoLog);
+					abort("error linking program : " ~ to!string(infoLog));
+				}
+
+				glDeleteProgram(id);
+				id = GLuint.init;
+
+				return;
+			}
+
+			checkError();
+
+			if(analyze) { // Analyze shader to determine attributes
+				analyzeAttributes(vertexSource);
+				analyzeTextureSamplers(fragmentSource);
+			}
+		} catch(Exception ex) {}
 	}
 
-	void bind() {
+	static Shader fromSource(string vertexSource, string fragmentSource) nothrow {
+		return new Shader(cast(const(char)[]) vertexSource, cast(const(char)[]) fragmentSource);
+	}
+
+	void bind() nothrow {
 		glUseProgram(id);
 	}
 
-	void unbind() {
+	void unbind() nothrow {
 		glUseProgram(0);
 	}
 
-	void uniform(string name, int value) {
+	void uniform(string name, int value) nothrow {
 		if(!(name in uniforms)) {
 			uniforms[name] = glGetUniformLocation(id, name.toStringz);
 		}
 		glUniform1i(uniforms[name], value);
 	}
 
-	void uniform(string name, mat4 matrix) {
+	void uniform(string name, mat4 matrix) nothrow {
 		if(!(name in uniforms)) {
 			uniforms[name] = glGetUniformLocation(id, name.toStringz);
 		}
 		glUniformMatrix4fv(uniforms[name], 1, cast(ubyte)true, cast(const(float) *)matrix.value_ptr);
 	}
 
-	void uniform(string name, vec2 vector) {
+	void uniform(string name, vec2 vector) nothrow {
 		if(!(name in uniforms)) {
 			uniforms[name] = glGetUniformLocation(id, name.toStringz);
 		}
 		glUniform2f(uniforms[name], vector.x, vector.y);
 	}
 
-	void uniform(string name, vec3 vector) {
+	void uniform(string name, vec3 vector) nothrow {
 		if(!(name in uniforms)) {
 			uniforms[name] = glGetUniformLocation(id, name.toStringz);
 		}
 		glUniform3f(uniforms[name], vector.x, vector.y, vector.z);
 	}
 
-	void uniform(string name, vec4 vector) {
+	void uniform(string name, vec4 vector) nothrow {
 		if(!(name in uniforms)) {
 			uniforms[name] = glGetUniformLocation(id, name.toStringz);
 		}
 		glUniform4f(uniforms[name], vector.x, vector.y, vector.z, vector.w);
 	}
 
-	void uniform(string name, vec2i vector) {
+	void uniform(string name, vec2i vector) nothrow {
 		if(!(name in uniforms)) {
 			uniforms[name] = glGetUniformLocation(id, name.toStringz);
 		}
 		glUniform2f(uniforms[name], vector.x, vector.y);
 	}
 
-	void uniform(string name, vec3i vector) {
+	void uniform(string name, vec3i vector) nothrow {
 		if(!(name in uniforms)) {
 			uniforms[name] = glGetUniformLocation(id, name.toStringz);
 		}
 		glUniform3i(uniforms[name], vector.x, vector.y, vector.z);
 	}
 
-	void uniform(string name, vec4i vector) {
+	void uniform(string name, vec4i vector) nothrow {
 		if(!(name in uniforms)) {
 			uniforms[name] = glGetUniformLocation(id, name.toStringz);
 		}
 		glUniform4i(uniforms[name], vector.x, vector.y, vector.z, vector.w);
+	}
+
+	void uniform(string name, VColor color) nothrow {
+		uniform(name, vec4(color.r / 255f, color.g / 255f, color.b / 255f, color.a / 255f));
 	}
 
 	~this() {
@@ -180,40 +199,44 @@ class Shader
 	}
 
 	private {
-		GLuint compilePiece(char *src, GLenum type)
+		GLuint compilePiece(char *src, GLenum type) nothrow
 		{
-			GLuint shader;
-			GLint Compiled;
+			try {
+				GLuint shader;
+				GLint Compiled;
 
-			shader = glCreateShader(type);
+				shader = glCreateShader(type);
 
-			if(shader == 0)
-				abort("Could not create shader program");
+				if(shader == 0)
+					abort("Could not create shader program");
 
-			glShaderSource(shader, 1, cast(const char **) &src, null);
+				glShaderSource(shader, 1, cast(const char **) &src, null);
 
-			glCompileShader(shader);
+				glCompileShader(shader);
 
-			glGetShaderiv(shader, GL_COMPILE_STATUS, &Compiled);
+				glGetShaderiv(shader, GL_COMPILE_STATUS, &Compiled);
 
-			if(!Compiled)
-			{
-				GLint infoLen = 0;
-
-				glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &infoLen);
-
-				if(infoLen > 1)
+				if(!Compiled)
 				{
-					char[] infoLog = new char[infoLen];
+					GLint infoLen = 0;
 
-					glGetShaderInfoLog(shader, infoLen, null, cast(char *)infoLog);
-					abort(infoLog.idup);
+					glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &infoLen);
+
+					if(infoLen > 1)
+					{
+						char[] infoLog = new char[infoLen];
+
+						glGetShaderInfoLog(shader, infoLen, null, cast(char *)infoLog);
+						abort(infoLog.idup);
+					}
+
+					glDeleteShader(shader);
+					return 0;
 				}
-
-				glDeleteShader(shader);
+				return shader;
+			} catch(Exception ex) {
 				return 0;
 			}
-			return shader;
 		}
 
 		void analyzeAttributes(const(char)[] vertexSource) {

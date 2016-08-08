@@ -68,7 +68,14 @@ class VertexAttribute
 
 	VertexAttribute add(float[] data...) in { assert(data.length % vertexSize == 0, "Adding data to vertex attribute needs to be divisible by " ~ to!string(vertexSize)); }
 	body {
-		this.data ~= data[];
+		this.data ~= data;
+
+		return this;
+	}
+
+	VertexAttribute set(float[] data...) in { assert(data.length % vertexSize == 0, "Adding data to vertex attribute needs to be divisible by " ~ to!string(vertexSize)); }
+	body {
+		this.data ~= data;
 
 		return this;
 	}
@@ -81,13 +88,13 @@ class VertexAttribute
 		if(vbo != GLuint.init && !this.isDynamic) {
 			glDeleteBuffers(1, &vbo);
 		} else if(vbo != GLuint.init && this.isDynamic) {
-			glBufferData(GL_ELEMENT_ARRAY_BUFFER, data.length * float.sizeof, data.ptr, GL_DYNAMIC_DRAW);
+			glBufferData(GL_ARRAY_BUFFER, data.length * float.sizeof, data.ptr, GL_DYNAMIC_DRAW);
 		} else {
 			this.isDynamic = generateDynamic;
 
 			glGenBuffers(1, &vbo);
-			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo);
-			glBufferData(GL_ELEMENT_ARRAY_BUFFER, data.length * float.sizeof, data.ptr, generateDynamic ? GL_DYNAMIC_DRAW : GL_STATIC_DRAW);
+			glBindBuffer(GL_ARRAY_BUFFER, vbo);
+			glBufferData(GL_ARRAY_BUFFER, data.length * float.sizeof, data.ptr, generateDynamic ? GL_DYNAMIC_DRAW : GL_STATIC_DRAW);
 		}
 		return this;
 	}

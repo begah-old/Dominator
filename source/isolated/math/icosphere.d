@@ -77,7 +77,7 @@ class IcoSphere {
 		}
 	}
 
-	/* Calculate where the triangle is in memory */
+	/* Calculate where the triangle is in memory ( not the vertices, multiply by 3 to use in texturecoords or positions ) */
 	int triangleIndex(vec3 v1, vec3 v2, vec3 v3) {
 		vec3 middle = (v1 + v2 + v3) / 3.0f;
 
@@ -92,12 +92,12 @@ class IcoSphere {
 		return 0;
 	}
 
-	@safe nothrow int getLevelIndex(int level) in {assert(level > 0 && level <= this.levelCount);}
+	int getLevelIndex(int level) @safe nothrow in {assert(level > 0 && level <= this.levelCount);}
 	body {
 		return _levelIndeces[level - 1];
 	}
 
-	@safe nothrow int getLevelSize(int level) {
+	int getLevelSize(int level) @safe nothrow {
 		if(level > this.levelCount / 2) {
 			return getLevelSize(this.levelCount - level + 1);
 		} else if(level >= this.levelMaxSize) {

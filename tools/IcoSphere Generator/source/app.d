@@ -46,7 +46,7 @@ int main() {
 	foreach(i, t; textcoord) {
 		if(i == textcoord.length - 1) file.write("vec2(", t.x, ", ", t.y / 2.0f + 0.5f, ")");
 		else if((i + 1) % 5 == 0) { file.writeln("vec2(", t.x, ", ", t.y / 2.0f + 0.5f, "), "); file.write("\t"); }
-		else file.write("vec2(", t.x, ", ", t.y, "), ");
+		else file.write("vec2(", t.x, ", ", t.y / 2.0f + 0.5f, "), ");
 	}
 	file.writeln(" ];");
 

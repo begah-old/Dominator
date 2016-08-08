@@ -15,7 +15,7 @@ class Game {
     camera = new PerspectiveCamera(window.screenDimension);
     new CameraController(camera, window);
 
-    planet = new Planet(vec3(0));
+    planet = new Planet(vec3(0), 3);
   }
 
   void update() {

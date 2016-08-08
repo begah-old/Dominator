@@ -8,90 +8,112 @@ import std.algorithm;
 import isolated.math;
 import isolated.graphics.mesh;
 import isolated.graphics.vertexattribute;
+import isolated.graphics.texture;
 import isolated.graphics.utils.opengl;
 import isolated.graphics.camera.camera;
 import isolated.graphics.shader;
 import isolated.utils.logger;
 import isolated.file;
 import isolated.window;
+import isolated.utils.timer;
 import app : window;
 
 class Planet {
-  vec3 position;
-  vec3 rotation;
+	private vec3 _position;
+	private vec3 _rotation;
 
-  Mesh mesh;
-  Shader shader;
-  IcoSphere icoSphere;
-  int level;
+	private Mesh _mesh;
+	private IcoSphere _icoSphere;
 
-  this(vec3 position) {
-    this.position = position;
-    this.rotation = vec3(0);
+	private Shader _shader;
+	private int level; // TODO: Remove
 
-    shader = new Shader("Shaders/default");
+	private Texture _texture;
 
-    mesh = constructPlanet();
+	this(vec3 position, int subLevel) {
+		_position = position;
+		_rotation = vec3(0);
 
-    window.addCallBack(&scroll, true);
-	window.addCallBack(&key);
+		_shader = new Shader("Shaders/default");
 
-	level = 0;
-  }
+		_icoSphere = new IcoSphere(subLevel);
 
-  void scroll(double x, double y) nothrow {
-    level -= cast(int)y;
+		_mesh = new Mesh();
+		_mesh.add(VertexAttribute.Position.set(cast(float[])_icoSphere.positions));
+		_mesh.add(VertexAttribute.Normal.set(cast(float[])_icoSphere.normals));
+		_mesh.add(VertexAttribute.TexCoords.set(cast(float[])_icoSphere.texturecoords));
+		_mesh.generate(_shader);
 
-    if(level > icoSphere.levelCount)
-      level = 1;
-    if(level < 0)
-      level = icoSphere.levelCount;
-	
-	Logger.info(level);
-    Logger.info(to!string(icoSphere.getLevelIndex(level)) ~ " / " ~ to!string(icoSphere.getLevelSize(level)));
-  }
+		window.addCallBack(&scroll, true);
+		window.addCallBack(&key);
 
-  Mesh constructPlanet() {
-    icoSphere = new IcoSphere(3);
+		level = 0;
 
-    Mesh mesh = new Mesh();
-    mesh.add(VertexAttribute.Position.add(cast(float[])icoSphere.positions));
-	mesh.add(VertexAttribute.Normal.add(cast(float[])icoSphere.normals));
-	mesh.add(VertexAttribute.TexCoords.add(cast(float[])icoSphere.texturecoords));
-    mesh.generate(shader);
-
-    return mesh;
-  }
-
-  void key(int key, int action, int mods) nothrow {
-	if(key == GLFW_KEY_I && action) {
-		Logger.info("INFO");
+		_texture = Texture(1200, 1200);
 	}
-  }
 
-  void render(Camera camera) {
-    shader.bind();
-    shader.uniform("uView", camera.viewMatrix);
-    shader.uniform("uProjection", camera.projectionMatrix);
-    checkError();
-    glBindVertexArray(mesh.vao);
+	void scroll(double x, double y) nothrow {
+		level -= cast(int)y;
 
-    int start, count;
-    if(level == 0) {
-      start = 0;
-      count = mesh.vertexCount;
-    } else {
-      start = icoSphere.getLevelIndex(level) * 3;
-      count = icoSphere.getLevelSize(level) * 3;
-    }
+		if(level > _icoSphere.levelCount)
+			level = 1;
+		if(level < 0)
+			level = _icoSphere.levelCount;
+	
+		Logger.info(level);
+		Logger.info(to!string(_icoSphere.getLevelIndex(level)) ~ " / " ~ to!string(_icoSphere.getLevelSize(level)));
+	}
 
-    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-	glDrawArrays(GL_TRIANGLES, start, count);
-    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	void key(int key, int action, int mods) nothrow {
+		if(!action) return;
 
-    glBindVertexArray(0);
+		if(key == GLFW_KEY_I) {
+			Logger.info("INFO");
+			Logger.info(_icoSphere.texturecoords[_icoSphere.getLevelIndex(level) * 3]);
+			Logger.info(_icoSphere.texturecoords[_icoSphere.getLevelIndex(level) * 3 + 1]);
+			Logger.info(_icoSphere.texturecoords[_icoSphere.getLevelIndex(level) * 3 + 2]);
+		} else if(key == GLFW_KEY_UP) {
+			level--;
+		} else if(key == GLFW_KEY_DOWN) {
+			level++;
+		}
+	}
 
-    shader.unbind();
+	void render(Camera camera) {
+		_shader.bind();
+		_shader.uniform("uView", camera.viewMatrix);
+		_shader.uniform("uProjection", camera.projectionMatrix);
+
+		_shader.uniform(_shader.textureSamplers[0], 0);
+
+		glBindVertexArray(_mesh.vao);
+
+		int start, count;
+		if(level == 0) {
+			start = 0;
+			count = _mesh.vertexCount;
+		} else {
+			start =	_icoSphere.getLevelIndex(level) * 3;
+			count =	_icoSphere.getLevelSize(level) * 3;
+		}
+
+		_texture.bind();
+
+		//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+		glDrawArrays(GL_TRIANGLES, start, count);
+		//glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+		glBindVertexArray(0);
+
+		_texture.unbind();
+		_shader.unbind();
 		checkError();
-  }
+	}
+
+	void triangleChangeColor(int triangle, VColor color) {
+		_texture.changePixels(_icoSphere.texturecoords[triangle * 3],
+							  _icoSphere.texturecoords[triangle * 3 + 1],
+							  _icoSphere.texturecoords[triangle * 3 + 2],
+							  color);
+	}
 }

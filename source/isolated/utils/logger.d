@@ -1,9 +1,19 @@
 ﻿module isolated.utils.logger;
 
+public import std.conv : to;
+
 import Abort = core.internal.abort;
 import std.stdio;
 import std.exception;
 import std.conv;
+import std.traits;
+
+// Casts @nogc out of a function or delegate type.
+auto assumeNoGC(T) (T t) if (isFunctionPointer!T || isDelegate!T)
+{
+    enum attrs = functionAttributes!T | FunctionAttribute.nogc;
+    return cast(SetFunctionAttributes!(T, functionLinkage!T, attrs)) t;
+}
 
 struct Logger
 {
@@ -38,13 +48,19 @@ struct Logger
 		}
 	}
 
-	static void error(string error, string filename = __FILE__, size_t line = __LINE__) {
+	static void error(string error, string filename = __FILE__, size_t line = __LINE__) nothrow @nogc {
 		try {
-			stderr.writefln("ERROR (%s|%s) : %s", filename, line, error);
-		} catch(ErrnoException ex) {
-			abort("Fatal Error : " ~ collectExceptionMsg(ex));
+			assumeNoGC( (string s1, string f1, size_t l1, string e1) {
+				stderr.writefln(s1, f1, l1, e1);
+			})("ERROR (%s|%s) : %s", filename, line, error);
 		} catch(Exception ex) {
-			abort("Fatal Error : " ~ collectExceptionMsg(ex));
+		}
+	}
+
+	static void error(T)(T error, string filename = __FILE__, size_t line = __LINE__) nothrow @nogc {
+		static if(is(typeof(T) == char)) {
+			immutable(char)[1] c; c[0] = error;
+			error(c, filename, line);
 		}
 	}
 }
