@@ -42,10 +42,31 @@ void checkError(string filename = __FILE__, size_t line = __LINE__) nothrow @nog
 	}
 }
 
-import gl3n.linalg : Vector;
+struct Color {
+	ubyte[4] rgba;
 
-alias Vector!(ubyte, 4) VColor;
+	private @property ref inout(ubyte) get_(char coord)() inout {
+        return rgba[coord_to_index!coord];
+    }
 
-VColor Color(uint r, uint g, uint b, uint a = 255) nothrow @nogc {
-	return VColor(cast(ubyte)r, cast(ubyte)g, cast(ubyte)b, cast(ubyte)a);
+	template coord_to_index(char c) {
+		static if(c == 'r') enum coord_to_index = 0;
+		static if(c == 'g') enum coord_to_index = 1;
+		static if(c == 'b') enum coord_to_index = 2;
+		static if(c == 'a') enum coord_to_index = 3;
+	}
+
+	alias get_!'r' r;
+	alias get_!'g' g;
+	alias get_!'b' b;
+	alias get_!'a' a;
+
+	this(ubyte color) {
+		rgba[0 .. 4] = color;
+	}
+	this(ubyte r, ubyte g, ubyte b, ubyte a = 255) {
+		rgba[0 .. 4] = [ r, g, b, a ];
+	}
 }
+
+alias Color VColor;

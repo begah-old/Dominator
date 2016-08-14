@@ -3,7 +3,6 @@ module isolated.utils.timer;
 import core.time;
 
 struct Timer {
-
 	nothrow @safe :
 
 	private MonoTime time;

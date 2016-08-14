@@ -1,4 +1,4 @@
-module familysurvival.planet.planet;
+module dominator.planet.planet;
 
 import std.conv;
 import std.stdio;
@@ -18,21 +18,31 @@ import isolated.window;
 import isolated.utils.timer;
 import app : window;
 
+import dominator.planet.tile;
+
 class Planet {
 	private vec3 _position;
 	private vec3 _rotation;
 
 	private Mesh _mesh;
 	private IcoSphere _icoSphere;
+	IcoSphere icoSphere() @property @safe nothrow @nogc { return _icoSphere; }
 
 	private Shader _shader;
 	private int level; // TODO: Remove
 
 	private Texture _texture;
 
+	private uint _tileCount;
+	private Tile* _tiles;
+
+	private bool wireframe = false;
+
 	this(vec3 position, int subLevel) {
 		_position = position;
 		_rotation = vec3(0);
+
+		_timer = Timer().reset;
 
 		_shader = new Shader("Shaders/default");
 
@@ -50,6 +60,14 @@ class Planet {
 		level = 0;
 
 		_texture = Texture(1200, 1200);
+
+		import core.stdc.stdlib : malloc;
+
+		_tileCount = _icoSphere.positions.length / 3;
+		_tiles = cast(Tile*)malloc(Tile.sizeof * _tileCount);
+		for(int i = 0; i < _tileCount; i++) {
+			_tiles[i] = Tile(i, this);
+		}
 	}
 
 	void scroll(double x, double y) nothrow {
@@ -76,6 +94,68 @@ class Planet {
 			level--;
 		} else if(key == GLFW_KEY_DOWN) {
 			level++;
+		} else if(action == GLFW_PRESS && key == GLFW_KEY_TAB) {
+			wireframe = !wireframe;
+		}
+	}
+
+	Tile*[12] tileNeighbours(uint tileID) {
+		Tile*[12] neighbours;
+
+		int index = 0;
+		if(tileID < 5) {
+			// Place all tiles in first layer as neighbours
+			foreach(t; 0 .. 5) {
+				if(t == tileID) continue;
+				neighbours[index++] = _tiles + t;
+			}
+
+			int middleNeighbour = tileID + 5 + tileID * 2; // Triangle just under it
+			for(int i = -3; i <= 3; i++) {
+				if(middleNeighbour + i < 5) {
+					neighbours[index++] = _tiles + (middleNeighbour + i + 15);
+				} else if(middleNeighbour + i >= 20) {
+					neighbours[index++] = _tiles + (middleNeighbour + i - 15);
+				} else {
+					neighbours[index++] = _tiles + (middleNeighbour + i);
+				}
+			}
+
+			neighbours[11] = null;
+		} else if(tileID >= _tileCount - 5) {
+			// Place all tiles in last layer as neighbours
+			int lastLayer = _tileCount - 6;
+			foreach(t; 0 .. 5) {
+				if(t == tileID) continue;
+				neighbours[index++] = _tiles + (lastLayer + t);
+			}
+
+			int middleNeighbour = tileID + (tileID - lastLayer) * 2 + (lastLayer - 15); // Triangle just under it
+			for(int i = -3; i <= 3; i++) {
+				if(middleNeighbour + i < lastLayer - 15) {
+					neighbours[index++] = _tiles + (middleNeighbour + i + 15);
+				} else if(middleNeighbour + i >= lastLayer) {
+					neighbours[index++] = _tiles + (middleNeighbour + i - 15);
+				} else {
+					neighbours[index++] = _tiles + (middleNeighbour + i);
+				}
+			}
+
+			neighbours[11] = null;
+		} else {
+
+		}
+
+		return neighbours;
+	}
+
+	private Timer _timer;
+	void update() {
+		if(_timer.elapsedTime >= 1000) {
+			foreach(i, ref tile; _tiles[0 .. _tileCount]) {
+				tile.update(_timer.elapsedTime, tileNeighbours(i));
+			}
+			_timer.reset;
 		}
 	}
 
@@ -99,9 +179,9 @@ class Planet {
 
 		_texture.bind();
 
-		//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+		if(wireframe) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 		glDrawArrays(GL_TRIANGLES, start, count);
-		//glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+		if(wireframe) glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
 		glBindVertexArray(0);
 

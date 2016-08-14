@@ -1,9 +1,9 @@
-module familysurvival.game;
+module dominator.game;
 
 import isolated.math;
 import isolated.graphics.camera.perspective;
 import isolated.graphics.camera.controller;
-import familysurvival.planet.planet;
+import dominator.planet.planet;
 
 import app : window;
 

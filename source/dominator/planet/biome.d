@@ -1,4 +1,4 @@
-module familysurvival.planet.biome;
+module dominator.planet.biome;
 
 import isolated.graphics.utils.opengl;
 

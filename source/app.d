@@ -20,7 +20,7 @@ import isolated.graphics.g3d.modelinstance;
 import isolated.graphics.camera.controller;
 import isolated.graphics.texture;
 
-import familysurvival.game;
+import dominator.game;
 
 Window window;
 

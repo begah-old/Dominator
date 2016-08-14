@@ -16,11 +16,11 @@ class IcoSphere {
 	private vec2[] _intervals; /* Height intervals to determine on which level a triangle resides */
 
 	private vec3[] _positions, _normals; /* Actual position and normal of the sphere in order */
-	vec3[] positions() @property @safe nothrow {return this._positions;}
-	vec3[] normals() @property @safe nothrow {return this._normals;}
+	ref vec3[] positions() @property @safe nothrow {return this._positions;}
+	ref vec3[] normals() @property @safe nothrow {return this._normals;}
 
 	private vec2[] _texturecoords; /* Actual texture coordinates of the sphere in order */
-	vec2[] texturecoords() @property @safe nothrow {return this._texturecoords;}
+	ref vec2[] texturecoords() @property @safe nothrow {return this._texturecoords;}
 
 	private immutable int[] _levelIndeces; /* Place ( in triangles ) the level is in memory */
 
