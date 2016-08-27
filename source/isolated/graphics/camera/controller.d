@@ -22,7 +22,7 @@ class CameraController
 
 	void keyCallback(int key, int action, int mods) {
 		if(action) {
-			float yaw = -camera.getYaw();
+			float yaw = -camera.yaw();
 			vec2 direction = vec2(cos(yaw), sin(yaw));
 
 			switch(key) {

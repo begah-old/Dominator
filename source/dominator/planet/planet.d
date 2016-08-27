@@ -29,14 +29,19 @@ class Planet {
 	IcoSphere icoSphere() @property @safe nothrow @nogc { return _icoSphere; }
 
 	private Shader _shader;
-	private int level; // TODO: Remove
+	Shader shader() @property @safe nothrow @nogc { return _shader; }
 
 	private Texture _texture;
 
-	private uint _tileCount;
+	private size_t _tileCount;
 	private Tile* _tiles;
 
-	private bool wireframe = false;
+	private bool wireframe = true, showNeighbours = true;
+
+	private size_t selectedTile = 4712; // TODO: remove
+	private size_t lastTile = 0;
+
+	private Camera camera;
 
 	this(vec3 position, int subLevel) {
 		_position = position;
@@ -57,8 +62,6 @@ class Planet {
 		window.addCallBack(&scroll, true);
 		window.addCallBack(&key);
 
-		level = 0;
-
 		_texture = Texture(1200, 1200);
 
 		import core.stdc.stdlib : malloc;
@@ -71,38 +74,168 @@ class Planet {
 	}
 
 	void scroll(double x, double y) nothrow {
-		level -= cast(int)y;
-
-		if(level > _icoSphere.levelCount)
-			level = 1;
-		if(level < 0)
-			level = _icoSphere.levelCount;
-	
-		Logger.info(level);
-		Logger.info(to!string(_icoSphere.getLevelIndex(level)) ~ " / " ~ to!string(_icoSphere.getLevelSize(level)));
 	}
 
 	void key(int key, int action, int mods) nothrow {
 		if(!action) return;
 
 		if(key == GLFW_KEY_I) {
-			Logger.info("INFO");
-			Logger.info(_icoSphere.texturecoords[_icoSphere.getLevelIndex(level) * 3]);
-			Logger.info(_icoSphere.texturecoords[_icoSphere.getLevelIndex(level) * 3 + 1]);
-			Logger.info(_icoSphere.texturecoords[_icoSphere.getLevelIndex(level) * 3 + 2]);
-		} else if(key == GLFW_KEY_UP) {
-			level--;
-		} else if(key == GLFW_KEY_DOWN) {
-			level++;
-		} else if(action == GLFW_PRESS && key == GLFW_KEY_TAB) {
+			Logger.info("INFO : ");
+
+			/*Logger.info("Texture coordinates : ");
+			Logger.info(_icoSphere.texturecoords[selectedTile * 3]);
+			Logger.info(_icoSphere.texturecoords[selectedTile * 3 + 1]);
+			Logger.info(_icoSphere.texturecoords[selectedTile * 3 + 2]);*/
+
+			Logger.info("Tile id : " ~ selectedTile.to!string);
+			Logger.info("Level of tile : " ~ tileLevel(selectedTile).to!string);
+			Logger.info("Level index : " ~ _icoSphere.getLevelIndex(tileLevel(selectedTile)).to!string);
+			Logger.info("Level size : " ~ _icoSphere.getLevelSize(tileLevel(selectedTile)).to!string);
+		} else if(key == GLFW_KEY_U) {
+			lastTile = selectedTile;
+			selectedTile = tileNeighbourUp(selectedTile);
+
+			vec3 middle = (_tiles[selectedTile].vertices[0] + _tiles[selectedTile].vertices[1] + _tiles[selectedTile].vertices[2]) / 3.0f, normal = _tiles[selectedTile].normal;
+			camera.moveToLookAt(middle + normal * 1, middle);
+		} else if(key == GLFW_KEY_J) {
+			lastTile = selectedTile;
+			selectedTile = tileNeighbourDown(selectedTile);
+
+			vec3 middle = (_tiles[selectedTile].vertices[0] + _tiles[selectedTile].vertices[1] + _tiles[selectedTile].vertices[2]) / 3.0f, normal = _tiles[selectedTile].normal;
+			camera.moveToLookAt(middle + normal * 1, middle);
+		} else if(key == GLFW_KEY_H) {
+			lastTile = selectedTile;
+			selectedTile++;
+
+			vec3 middle = (_tiles[selectedTile].vertices[0] + _tiles[selectedTile].vertices[1] + _tiles[selectedTile].vertices[2]) / 3.0f, normal = _tiles[selectedTile].normal;
+			camera.moveToLookAt(middle + normal * 1, middle);
+		} else if(key == GLFW_KEY_K) {
+			lastTile = selectedTile;
+			selectedTile--;
+
+			vec3 middle = (_tiles[selectedTile].vertices[0] + _tiles[selectedTile].vertices[1] + _tiles[selectedTile].vertices[2]) / 3.0f, normal = _tiles[selectedTile].normal;
+			camera.moveToLookAt(middle + normal * 1, middle);
+		} else if(key == GLFW_KEY_Z && mods == GLFW_MOD_CONTROL) {
+			selectedTile = lastTile;
+		} else if(key == GLFW_KEY_TAB) {
 			wireframe = !wireframe;
+		} else if(key == GLFW_KEY_P && mods == GLFW_MOD_CONTROL) {
+			showNeighbours = !showNeighbours;
 		}
 	}
 
-	Tile*[12] tileNeighbours(uint tileID) {
+	// Calculate at what level the tile is
+	int tileLevel(size_t tileID) @trusted nothrow @nogc {
+		int currLevel = _icoSphere.levelCount / 2;
+		int size = currLevel;
+
+		while(true) {
+			size_t levelIndex = _icoSphere.getLevelIndex(currLevel);
+			size_t levelSize = _icoSphere.getLevelSize(currLevel);
+
+			if(tileID >= levelIndex && tileID < levelIndex + levelSize) {
+				return currLevel;
+			} else if(tileID < levelIndex) {
+				currLevel -= size / 2;
+				size = cast(int)ceil(size / 2.0);
+			} else {
+				currLevel += cast(int)ceil(size / 2.0);
+				size = cast(int)ceil(size / 2.0);
+			}
+		}
+	}
+
+	size_t tileLeft(size_t tileID) @trusted nothrow @nogc {
+		int level = tileLevel(tileID);
+
+		int levelSize = _icoSphere.getLevelSize(level);
+		size_t levelIndex = _icoSphere.getLevelIndex(level);
+
+		tileID++;
+
+		if(tileID == levelIndex + levelSize) tileID = levelIndex;
+
+		return tileID;
+	}
+
+	size_t tileRight(size_t tileID) @trusted nothrow @nogc {
+		if(tileID == 0) return 4;
+		int level = tileLevel(tileID);
+
+		int levelSize = _icoSphere.getLevelSize(level);
+		size_t levelIndex = _icoSphere.getLevelIndex(level);
+
+		tileID--;
+
+		if(tileID < levelIndex) return levelIndex + levelSize - 1;
+
+		return tileID;
+	}
+
+	/* Find tile just below given tile */
+	size_t tileNeighbourDown(size_t tileID) @trusted nothrow @nogc {
+		int level = tileLevel(tileID);
+
+		int levelSize = _icoSphere.getLevelSize(level);
+		size_t levelIndex = _icoSphere.getLevelIndex(level);
+		int downLevelSize = _icoSphere.getLevelSize(level + 1);
+
+		if(levelSize == downLevelSize) {
+			return tileID + levelSize;
+		} else if(levelSize < downLevelSize) {
+			int levelSideCount = levelSize / 5; // Tiles count per side
+			int numCorners = ( tileID - levelIndex + (levelSideCount / 2) ) / levelSideCount; // Number of corners between first tile and this tile
+
+			size_t newIndex = tileID + levelSize + numCorners * ( (downLevelSize - levelSize) / 5 ); // (downLevelSize - levelSize) / 5 : Calculate how many tiles each corner has ( usually 2 but sometimes 1 )
+
+			return newIndex;
+		} else { // Current level is bigger than downard level
+			int levelSideCount = levelSize / 5; // Tiles count per side
+			int numCorners = ( tileID - levelIndex + ((levelSideCount - 1) / 2) ) / levelSideCount; // Number of corners between first tile and this tile
+			size_t newIndex = (levelIndex + levelSize) + (tileID - levelIndex) - numCorners * ( (levelSize - downLevelSize) / 5 );
+
+			return newIndex;
+		}
+	}
+
+	/* Find tile just above given tile */
+	size_t tileNeighbourUp(size_t tileID) @trusted nothrow @nogc {
+		if(tileID == 18) return 0;
+
+		int level = tileLevel(tileID);
+
+		int levelSize = _icoSphere.getLevelSize(level);
+		size_t levelIndex = _icoSphere.getLevelIndex(level);
+		int upLevelSize = _icoSphere.getLevelSize(level - 1);
+		size_t upLevelIndex = levelIndex - upLevelSize;
+
+		int levelSideCount, numCorners;
+		size_t newIndex;
+
+		if(levelSize == upLevelSize) {
+			return tileID - levelSize;
+		} else if(levelSize > upLevelSize) {
+			levelSideCount = levelSize / 5; // Tiles count per side
+			numCorners = ( tileID - levelIndex + ((levelSideCount - 1) / 2) ) / levelSideCount; // Number of corners between first tile and this tile
+			newIndex = upLevelIndex + (tileID - levelIndex) - numCorners * ( (levelSize - upLevelSize) / 5 );
+
+			return newIndex;
+		} else { // Upper level is bigger than level
+			levelSideCount = levelSize / 5; // Tiles count per side
+			numCorners = ( tileID - levelIndex + ((levelSideCount - 1) / 2) ) / levelSideCount; // Number of corners between first tile and this tile
+			newIndex = tileID - upLevelSize + numCorners * ( (upLevelSize - levelSize) / 5 );
+
+			return newIndex;
+		}
+	}
+
+	/* Find all tiles sharing atleast one vertex with given tile */
+	Tile*[12] tileNeighbours(size_t tileID) @trusted nothrow @nogc {
 		Tile*[12] neighbours;
 
-		int index = 0;
+		neighbours[] = null;
+
+		/*size_t index = 0;
 		if(tileID < 5) {
 			// Place all tiles in first layer as neighbours
 			foreach(t; 0 .. 5) {
@@ -110,7 +243,7 @@ class Planet {
 				neighbours[index++] = _tiles + t;
 			}
 
-			int middleNeighbour = tileID + 5 + tileID * 2; // Triangle just under it
+			size_t middleNeighbour = tileID + 5 + tileID * 2; // Triangle just under it
 			for(int i = -3; i <= 3; i++) {
 				if(middleNeighbour + i < 5) {
 					neighbours[index++] = _tiles + (middleNeighbour + i + 15);
@@ -124,13 +257,13 @@ class Planet {
 			neighbours[11] = null;
 		} else if(tileID >= _tileCount - 5) {
 			// Place all tiles in last layer as neighbours
-			int lastLayer = _tileCount - 6;
+			size_t lastLayer = _tileCount - 6;
 			foreach(t; 0 .. 5) {
 				if(t == tileID) continue;
 				neighbours[index++] = _tiles + (lastLayer + t);
 			}
 
-			int middleNeighbour = tileID + (tileID - lastLayer) * 2 + (lastLayer - 15); // Triangle just under it
+			size_t middleNeighbour = tileID + (tileID - lastLayer) * 2 + (lastLayer - 15); // Triangle just under it
 			for(int i = -3; i <= 3; i++) {
 				if(middleNeighbour + i < lastLayer - 15) {
 					neighbours[index++] = _tiles + (middleNeighbour + i + 15);
@@ -143,14 +276,17 @@ class Planet {
 
 			neighbours[11] = null;
 		} else {
-
-		}
+			neighbours[index++] = &_tiles[tileNeighbourUp(tileID)];
+			neighbours[index++] = &_tiles[tileNeighbourDown(tileID)];
+			neighbours[index++] = &_tiles[tileLeft(tileID)];
+			neighbours[index++] = &_tiles[tileRight(tileID)];
+		}*/
 
 		return neighbours;
 	}
 
 	private Timer _timer;
-	void update() {
+	void update(Camera camera, float delta) {
 		if(_timer.elapsedTime >= 1000) {
 			foreach(i, ref tile; _tiles[0 .. _tileCount]) {
 				tile.update(_timer.elapsedTime, tileNeighbours(i));
@@ -160,28 +296,45 @@ class Planet {
 	}
 
 	void render(Camera camera) {
+		this.camera = camera;
+		checkError();
+
 		_shader.bind();
 		_shader.uniform("uView", camera.viewMatrix);
 		_shader.uniform("uProjection", camera.projectionMatrix);
+		_shader.uniform("uTransform", mat4.identity);
 
 		_shader.uniform(_shader.textureSamplers[0], 0);
 
 		glBindVertexArray(_mesh.vao);
 
-		int start, count;
-		if(level == 0) {
-			start = 0;
-			count = _mesh.vertexCount;
-		} else {
-			start =	_icoSphere.getLevelIndex(level) * 3;
-			count =	_icoSphere.getLevelSize(level) * 3;
-		}
-
 		_texture.bind();
 
-		if(wireframe) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-		glDrawArrays(GL_TRIANGLES, start, count);
-		if(wireframe) glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+		if(showNeighbours) {
+			Tile*[12] neighbours = tileNeighbours(selectedTile);
+
+			foreach(i; 0 .. 12) {
+				if(neighbours[i] is null) break;
+
+				_shader.uniform("Color", Color(0, 255, 0));
+				glDrawArrays(GL_TRIANGLES, neighbours[i].tileID * 3, 3);
+			}
+		}
+
+		_shader.uniform("Color", Color(255));
+		glDrawArrays(GL_TRIANGLES, 0, _mesh.vertexCount);
+
+		if(wireframe) {
+			_shader.uniform("Color", Color(0, 0, 255));
+			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+			glDrawArrays(GL_TRIANGLES, 0, _mesh.vertexCount);
+			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+		}
+
+		glDisable(GL_DEPTH_TEST);
+
+		_shader.uniform("Color", Color(255, 0, 0));
+		glDrawArrays(GL_TRIANGLES, selectedTile * 3, 3);
 
 		glBindVertexArray(0);
 

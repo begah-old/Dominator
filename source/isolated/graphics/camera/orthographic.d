@@ -5,7 +5,7 @@ import isolated.math;
 
 class OrthographicCamera : Camera
 {
-	pure nothrow @safe @nogc :
+	nothrow @safe @nogc :
 
 	this(vec2i viewport) {
 		this(viewport, vec3(0, 0, 0));
@@ -15,16 +15,16 @@ class OrthographicCamera : Camera
 		super(viewport, position);
 	}
 
-	override @nogc void update() {
-		if(dirty) {
+	override @nogc void update(float delta) {
+		if(_dirty) {
 			projectionMatrix.make_identity();
 
 			viewMatrix.make_identity();
-			viewMatrix.translate(-position);
-			viewMatrix.rotatez(-(yaw - std.math.PI_2)); // Because it is needed that at the start, the camera points toward negative z
-			viewMatrix.rotatex(-pitch);
+			viewMatrix.translate(-_translation);
+			viewMatrix.rotatez(-(_yaw - std.math.PI_2)); // Because it is needed that at the start, the camera points toward negative z
+			viewMatrix.rotatex(-_pitch);
 			
-			dirty = false;
+			_dirty = false;
 		}
 	}
 }

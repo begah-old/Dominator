@@ -37,7 +37,6 @@ class Scene3d
 		checkError();
 		shader.bind();
 
-		camera.update();
 		shader.uniform("uView", camera.viewMatrix);
 		shader.uniform("uProjection", camera.projectionMatrix);
 

@@ -12,6 +12,6 @@ out vec2 texturecoord;
 
 void main()
 {
-	gl_Position = uProjection * uView * vec4(aposition, 1.0);
+	gl_Position = uProjection * uView * uTransform * vec4(aposition, 1.0);
 	texturecoord = atextcoord;
 }

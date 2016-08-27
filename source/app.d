@@ -19,34 +19,41 @@ import isolated.graphics.camera.perspective;
 import isolated.graphics.g3d.modelinstance;
 import isolated.graphics.camera.controller;
 import isolated.graphics.texture;
+import isolated.utils.timer;
 
 import dominator.game;
 
 Window window;
 
 int main() {
-	window = new Window("Test application");
-	window.title = "DS";
+	window = new Window("Dominator");
 	window.show();
 
 	Game game = new Game();
 
 	core.memory.GC.collect();
 
+	Timer timer;
+	long lastFrameTime;
+
 	while(window.shouldClose() == false) {
+		timer.reset();
+
         glViewport(0, 0, window.screenDimension.x, window.screenDimension.y);
     	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
     	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 
-		glEnable(GL_DEPTH_TEST);
+		checkError();
 
-		game.update();
+		game.update(lastFrameTime);
 		game.render();
 
 		checkError();
 		window.refresh();
 
 		core.memory.GC.collect();
+
+		lastFrameTime = timer.elapsedTime;
 	}
 
 	ModelManager.purge();

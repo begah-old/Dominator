@@ -2,16 +2,24 @@
 
 import isolated.math;
 
+import isolated.utils.logger;
+
 class Camera
 {
 	protected {
 		const float NEAR_PLANE = 0.1f;
 		const float FAR_PLANE = 1000;
 
-		vec3 translation;
-		float pitch = 0, yaw = 0; // pitch ( around X axis ), yaw ( around Y axis )
+		vec3 _translation;
+		float _pitch = 0, _yaw = 0; // pitch ( look up and down ), yaw ( rotate around )
 
-		bool dirty = true;
+		bool _dirty = true;
+
+		bool _isMoving = false;
+		vec3 _targetedTranslation;
+		vec2 _targetedRotation;
+
+		vec2 _targetSpeed;
 	}
 
 	public {
@@ -20,17 +28,13 @@ class Camera
 		mat4 projectionMatrix;
 	}
 
-	pure nothrow @safe @nogc :
+	nothrow @safe @nogc :
 
 	this(vec2i viewport, vec3 position) {
-		this.translation = position;
+		this._translation = position;
 		this.viewport = viewport;
 
-		yaw = std.math.PI_2;
-	}
-
-	void lookAt(vec3 target) {
-
+		_yaw = std.math.PI_2;
 	}
 
 	void translate(float x, float y, float z) {
@@ -38,8 +42,8 @@ class Camera
 	}
 
 	void translate(vec3 pos) nothrow {
-		this.translation = this.translation + pos;
-		dirty = true;
+		this._translation = this._translation + pos;
+		_dirty = true;
 	}
 
 	void setTranslation(float x, float y, float z) {
@@ -47,28 +51,109 @@ class Camera
 	}
 
 	void setTranslation(vec3 pos) nothrow {
-		this.translation = pos;
-		dirty = true;
+		this._translation = pos;
+		_dirty = true;
 	}
 
 	@property vec3 position() {
-		return this.translation;
+		return this._translation;
 	}
 
 	void rotate(float yaw, float pitch) {
-		this.pitch += pitch;
-		this.yaw += yaw;
-		dirty = true;
+		this._pitch += pitch;
+		this._yaw += yaw;
+		_dirty = true;
 	}
 
-	void update() {
+	/// Make the camera rotate to look at point
+	void lookAt(vec3 target) {
+		target -= _translation;
 
+		_yaw = asin(-target.z / target.xz.magnitude);
+
+		if(_yaw >= 0 && target.x < 0) _yaw += 2 * (PI_2 - _yaw);
+		else if(_yaw < 0) {
+			if(target.x < 0) _yaw -= 2 * (PI_2 + _yaw) ;
+
+			_yaw += 2 * PI;
+		}
+
+		target.normalize();
+
+		_pitch = asin(target.y);
+
+		_dirty = true;
 	}
 
-	float getYaw() {
-		return yaw;
+	/// Move smoothly the camera to a new position to look at a target. Allows to pass time wished for translation animation and rotation animation
+	void moveToLookAt(vec3 targetPosition, vec3 targetLookAt, float translationTime = 2, float rotationTime = 4) {
+		vec2 tempRot = vec2(_pitch, _yaw);
+		_targetedTranslation = _translation;
+		_translation = targetPosition;
+
+		lookAt(targetLookAt);
+
+		_translation = _targetedTranslation;
+
+		_targetedTranslation = targetPosition;
+		_targetedRotation = vec2(_pitch, _yaw);
+		_pitch = tempRot.x; _yaw = tempRot.y;
+
+		_targetSpeed = vec2((_targetedTranslation - _translation).magnitude / translationTime / 1000.0f, (_targetedRotation - vec2(_pitch, _yaw)).magnitude / rotationTime / 1000.0f);
+
+		_isMoving = true;
 	}
-	float getPitch() {
-		return pitch;
+
+	// Update the camera matrix and position. Delta time is in milli-seconds
+	void update(float delta) {
+		if(_isMoving) {
+			vec3 direction = _targetedTranslation - _translation;
+			float travelSpeed = _targetSpeed.x * delta;
+
+			if(travelSpeed >= direction.magnitude) {
+				_translation = _targetedTranslation;
+				_targetSpeed.x = 0;
+
+				_dirty = true;
+			} else if(_targetSpeed.x != 0) {
+				_translation += travelSpeed * direction.normalized;
+			
+				_dirty = true;
+			}
+
+			vec2 rotDirection = _targetedRotation - vec2(_pitch, _yaw);
+			travelSpeed = _targetSpeed.y * delta;
+
+			if(abs(rotDirection.x) <= travelSpeed) {
+				_pitch = _targetedRotation.x;
+				rotDirection.x = 0;
+			} else {
+				if(rotDirection.x < 0) _pitch -= travelSpeed;
+				else _pitch += travelSpeed;
+			}
+
+			if(abs(rotDirection.y) <= travelSpeed) {
+				_yaw = _targetedRotation.y;
+				rotDirection.y = 0;
+			} else {
+				if(rotDirection.y < 0) _yaw -= travelSpeed;
+				else _yaw += travelSpeed;
+			}
+
+			if(rotDirection.x == 0 && rotDirection.y == 0)
+				_targetSpeed.y = 0;
+
+			if(_targetSpeed.x == 0 && _targetSpeed.y == 0)
+				_isMoving = false;
+
+			_dirty = true;
+		}
+	}
+
+	float yaw() {
+		return _yaw;
+	}
+	float pitch() {
+		return _pitch;
 	}
 }

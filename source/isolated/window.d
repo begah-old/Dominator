@@ -125,7 +125,7 @@ class Window {
 		}
 
 		try {
-			DerelictGL3.reload();
+			DerelictGL3.reload(GLVersion.GL33);
 		} catch(Exception ex) {
 			abort(ex.msg);
 		}

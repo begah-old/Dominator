@@ -88,4 +88,54 @@ nothrow @trusted :
 	static Mesh Square(vec2 position, vec2 dimension, float depth = 0, int attributes = VertexAttribute.Usage.Position) {
 		return Square(position.x, position.y, dimension.x, dimension.y, depth, attributes);
 	}
+
+	/// Create a box mesh with total size of specified dimension 
+	static Mesh Box(vec3 dimension = vec3(2.0f), int attributes = VertexAttribute.Usage.Position) {
+		Mesh mesh = new Mesh();
+
+		vec3 halfDim = dimension / 2.0f;
+
+		if(attributes & VertexAttribute.Usage.Position)
+			mesh.add(VertexAttribute.Position.add([-halfDim.x,-halfDim.y,-halfDim.z,
+				-halfDim.x,-halfDim.y, halfDim.z,
+				-halfDim.x, halfDim.y, halfDim.z,
+				halfDim.x, halfDim.y,-halfDim.z,
+				-halfDim.x,-halfDim.y,-halfDim.z,
+				-halfDim.x, halfDim.y,-halfDim.z,
+				halfDim.x,-halfDim.y, halfDim.z,
+				-halfDim.x,-halfDim.y,-halfDim.z,
+				halfDim.x,-halfDim.y,-halfDim.z,
+				halfDim.x, halfDim.y,-halfDim.z,
+				halfDim.x,-halfDim.y,-halfDim.z,
+				-halfDim.x,-halfDim.y,-halfDim.z,
+				-halfDim.x,-halfDim.y,-halfDim.z,
+				-halfDim.x, halfDim.y, halfDim.z,
+				-halfDim.x, halfDim.y,-halfDim.z,
+				halfDim.x,-halfDim.y, halfDim.z,
+				-halfDim.x,-halfDim.y, halfDim.z,
+				-halfDim.x,-halfDim.y,-halfDim.z,
+				-halfDim.x, halfDim.y, halfDim.z,
+				-halfDim.x,-halfDim.y, halfDim.z,
+				halfDim.x,-halfDim.y, halfDim.z,
+				halfDim.x, halfDim.y, halfDim.z,
+				halfDim.x,-halfDim.y,-halfDim.z,
+				halfDim.x, halfDim.y,-halfDim.z,
+				halfDim.x,-halfDim.y,-halfDim.z,
+				halfDim.x, halfDim.y, halfDim.z,
+				halfDim.x,-halfDim.y, halfDim.z,
+				halfDim.x, halfDim.y, halfDim.z,
+				halfDim.x, halfDim.y,-halfDim.z,
+				-halfDim.x, halfDim.y,-halfDim.z,
+				halfDim.x, halfDim.y, halfDim.z,
+				-halfDim.x, halfDim.y,-halfDim.z,
+				-halfDim.x, halfDim.y, halfDim.z,
+				halfDim.x, halfDim.y, halfDim.z,
+				-halfDim.x, halfDim.y, halfDim.z,
+				halfDim.x,-halfDim.y, halfDim.z]));
+
+		if(attributes & VertexAttribute.Usage.Normal)
+			mesh.add(VertexAttribute.Normal.add([-1, 0, 0, 0, 0, -1, 0, -1, 0, 0, 0, -1, -1, 0, 0, 0, -1, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1]));
+
+		return mesh;
+	}
 }
