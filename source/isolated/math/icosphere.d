@@ -16,11 +16,11 @@ class IcoSphere {
 	private vec2[] _intervals; /* Height intervals to determine on which level a triangle resides */
 
 	private vec3[] _positions, _normals; /* Actual position and normal of the sphere in order */
-	ref vec3[] positions() @property @safe nothrow {return this._positions;}
-	ref vec3[] normals() @property @safe nothrow {return this._normals;}
+	ref vec3[] positions() @property @safe @nogc nothrow {return this._positions;}
+	ref vec3[] normals() @property @safe @nogc nothrow {return this._normals;}
 
 	private vec2[] _texturecoords; /* Actual texture coordinates of the sphere in order */
-	ref vec2[] texturecoords() @property @safe nothrow {return this._texturecoords;}
+	ref vec2[] texturecoords() @property @safe @nogc nothrow {return this._texturecoords;}
 
 	private immutable int[] _levelIndeces; /* Place ( in triangles ) the level is in memory */
 
@@ -97,11 +97,117 @@ class IcoSphere {
 		return _levelIndeces[level - 1];
 	}
 
-	int getLevelSize(int level) @safe nothrow @nogc {
+	int getLevelSize(int level) @safe nothrow @nogc in {assert(level > 0 && level <= this.levelCount);}
+	body {
 		if(level > this.levelCount / 2) {
 			return getLevelSize(this.levelCount - level + 1);
 		} else if(level >= this.levelMaxSize) {
 			return pow(2, (this.subdivisionLevel - 3)) * 40;
 		} else return 5 * ( 2 * level - 1);
+	}
+
+	@trusted nothrow @nogc :
+
+	/// Calculate which level the tile resides in
+	int Tile_Level(size_t tileID) {
+		int currLevel = levelCount / 2;
+		int size = currLevel;
+
+		while(true) {
+			size_t levelIndex = getLevelIndex(currLevel);
+			size_t levelSize = getLevelSize(currLevel);
+
+			if(tileID >= levelIndex && tileID < levelIndex + levelSize) {
+				return currLevel;
+			} else if(tileID < levelIndex) {
+				currLevel -= size / 2;
+				size = cast(int)ceil(size / 2.0);
+			} else {
+				currLevel += cast(int)ceil(size / 2.0);
+				size = cast(int)ceil(size / 2.0);
+			}
+		}
+	}
+
+	/// Makes sure tileID is within level, if not figures out the best possible position of tile in level
+	size_t Tile_ToLevel(size_t tileID, int levelID) in { assert(levelID > 0 && levelID <= levelCount); } out(result) { assert(result >= 0 && result < _positions.length / 3, "Tile_ToLevel : Tile id returned is wrong"); }
+	body {
+		if(*(cast(sizediff_t*)&tileID) < 0) {
+			sizediff_t t2 = *(cast(sizediff_t*)&tileID);
+			t2 += 5;
+			return *(cast(size_t*)&t2);
+		}
+
+		int levelSize = getLevelSize(levelID);
+		size_t levelIndex = getLevelIndex(levelID);
+
+		if(tileID < levelIndex) return tileID + levelSize;
+		else if(tileID >= levelIndex + levelSize) return tileID - levelSize;
+		else return tileID;
+	}
+
+	/// Find tile just to the left of given tile ( tile + 1 )
+	size_t Tile_NeighbourLeft(size_t tileID) {
+		return Tile_ToLevel(tileID + 1, Tile_Level(tileID));
+	}
+
+	/// Find tile just to the right of given tile ( tile - 1 )
+	size_t Tile_NeighbourRight(size_t tileID) {
+		return Tile_ToLevel(tileID - 1, Tile_Level(tileID));
+	}
+
+	/// Find tile just below given tile
+	size_t Tile_NeighbourDown(size_t tileID) {
+		int level = Tile_Level(tileID);
+
+		int levelSize = getLevelSize(level);
+		size_t levelIndex = getLevelIndex(level);
+		int downLevelSize = getLevelSize(level + 1);
+
+		if(levelSize == downLevelSize) {
+			return tileID + levelSize;
+		} else if(levelSize < downLevelSize) {
+			int levelSideCount = levelSize / 5; // Tiles count per side
+			int numCorners = ( tileID - levelIndex + (levelSideCount / 2) ) / levelSideCount; // Number of corners between first tile and this tile
+
+			size_t newIndex = tileID + levelSize + numCorners * ( (downLevelSize - levelSize) / 5 ); // (downLevelSize - levelSize) / 5 : Calculate how many tiles each corner has ( usually 2 but sometimes 1 )
+
+			return Tile_ToLevel(newIndex, level + 1);
+		} else { // Current level is bigger than downard level
+			int levelSideCount = levelSize / 5; // Tiles count per side
+			int numCorners = ( tileID - levelIndex + ((levelSideCount - 1) / 2) ) / levelSideCount; // Number of corners between first tile and this tile
+			size_t newIndex = (levelIndex + levelSize) + (tileID - levelIndex) - numCorners * ( (levelSize - downLevelSize) / 5 );
+
+			return Tile_ToLevel(newIndex, level + 1);
+		}
+	}
+
+	/// Find tile just above given tile
+	size_t Tile_NeighbourUp(size_t tileID) {
+		int level = Tile_Level(tileID);
+
+		int levelSize = getLevelSize(level);
+		size_t levelIndex = getLevelIndex(level);
+		int upLevelSize = getLevelSize(level - 1);
+		size_t upLevelIndex = levelIndex - upLevelSize;
+
+		int levelSideCount, numCorners;
+		size_t newIndex;
+
+		if(levelSize == upLevelSize) {
+			return tileID - levelSize;
+		} else if(levelSize > upLevelSize) {
+			levelSideCount = levelSize / 5; // Tiles count per side
+			numCorners = ( tileID - levelIndex + ((levelSideCount - 1) / 2) ) / levelSideCount; // Number of corners between first tile and this tile
+			newIndex = upLevelIndex + (tileID - levelIndex) - numCorners * ( (levelSize - upLevelSize) / 5 );
+
+			return Tile_ToLevel(newIndex, level - 1);
+		} else { // Upper level is bigger than level
+			levelSideCount = levelSize / 5; // Tiles count per side
+			numCorners = ( tileID - levelIndex + ((levelSideCount - 1) / 2) ) / levelSideCount; // Number of corners between first tile and this tile
+			newIndex = tileID - upLevelSize + numCorners * ( (upLevelSize - levelSize) / 5 );
+
+			return Tile_ToLevel(newIndex, level - 1);
+		}
 	}
 }
