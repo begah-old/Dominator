@@ -24,7 +24,7 @@ class PerspectiveCamera : Camera
 			projectionMatrix = mat4.perspective(viewport.x, viewport.y, FOV, abs(NEAR_PLANE), abs(FAR_PLANE));
 
 			viewMatrix.make_identity();
-			viewMatrix.translate(-position);
+			viewMatrix.translate(-translation);
 			viewMatrix.rotatey(-(yaw - std.math.PI_2)); // Because it is needed that at the start, the camera points toward negative z
 			viewMatrix.rotatex(-pitch);
 

@@ -27,11 +27,15 @@ class Planet {
 	private Mesh _mesh;
 	private IcoSphere _icoSphere;
 	IcoSphere icoSphere() @property @safe nothrow @nogc { return _icoSphere; }
+	
+	private BoundingCube _boundingCube;
+	BoundingCube getBoundingBox() @property @safe nothrow @nogc { return _boundingCube; }
 
 	private Shader _shader;
 	Shader shader() @property @safe nothrow @nogc { return _shader; }
 
 	private Texture _texture;
+	ref Texture texture() @property @safe nothrow @nogc { return _texture; }
 
 	private size_t _tileCount;
 	size_t tileCount() @property @safe nothrow @nogc { return _tileCount; }
@@ -40,8 +44,8 @@ class Planet {
 
 	private bool wireframe = true, showNeighbours = true;
 
-	private size_t selectedTile = 4712; // TODO: remove
-	private size_t lastTile = 0;
+	size_t selectedTile = 0; // TODO: remove
+	private size_t lastTile = 0; // TODO: remove
 
 	private Camera camera;
 
@@ -54,6 +58,8 @@ class Planet {
 		_shader = new Shader("Shaders/default");
 
 		_icoSphere = new IcoSphere(subLevel);
+		_boundingCube = new BoundingCube();
+		_boundingCube.max = vec3(1.0f); _boundingCube.min = vec3(0.0f);
 
 		_mesh = new Mesh();
 		_mesh.add(VertexAttribute.Position.set(cast(float[])_icoSphere.positions));
@@ -71,7 +77,7 @@ class Planet {
 		_tileCount = _icoSphere.positions.length / 3;
 		_tiles = cast(Tile*)malloc(Tile.sizeof * _tileCount);
 		for(int i = 0; i < _tileCount; i++) {
-			_tiles[i] = Tile(i, this);
+			_tiles[i] = Tile(i, this, vec2i(_texture.width, _texture.height));
 		}
 	}
 
@@ -135,6 +141,11 @@ class Planet {
 		this.camera = camera;
 		checkError();
 
+		if(_texture.isDirty) {
+			_texture.bind();
+			checkError();
+		}
+
 		_shader.bind();
 		_shader.uniform("uView", camera.viewMatrix);
 		_shader.uniform("uProjection", camera.projectionMatrix);
@@ -146,43 +157,16 @@ class Planet {
 
 		_texture.bind();
 
-		if(showNeighbours && selectedTile >= 0 && selectedTile < _tileCount) {
-			Tile*[12] neighbours = _tiles[selectedTile].neighbours;
-
-			foreach(i; 0 .. 12) {
-				if(neighbours[i] is null) break;
-
-				_shader.uniform("Color", Color(0, 255, 0));
-				glDrawArrays(GL_TRIANGLES, neighbours[i].tileID * 3, 3);
-			}
-		}
+		_shader.uniform("Color", Color(255, 0, 0));
+		glDrawArrays(GL_TRIANGLES, selectedTile * 3, 3);
 
 		_shader.uniform("Color", Color(255));
 		glDrawArrays(GL_TRIANGLES, 0, _mesh.vertexCount);
-
-		if(wireframe) {
-			_shader.uniform("Color", Color(0, 0, 255));
-			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-			glDrawArrays(GL_TRIANGLES, 0, _mesh.vertexCount);
-			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-		}
-
-		glDisable(GL_DEPTH_TEST);
-
-		_shader.uniform("Color", Color(255, 0, 0));
-		glDrawArrays(GL_TRIANGLES, selectedTile * 3, 3);
 
 		glBindVertexArray(0);
 
 		_texture.unbind();
 		_shader.unbind();
 		checkError();
-	}
-
-	void triangleChangeColor(int triangle, VColor color) {
-		_texture.changePixels(_icoSphere.texturecoords[triangle * 3],
-							  _icoSphere.texturecoords[triangle * 3 + 1],
-							  _icoSphere.texturecoords[triangle * 3 + 2],
-							  color);
 	}
 }

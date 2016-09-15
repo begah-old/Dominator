@@ -18,42 +18,50 @@ struct Tile {
 	private vec3 _normal;
 	vec3 normal() nothrow @property @nogc @safe {return _normal;}
 
-	private vec2[3] _textucoords;
-	vec2[3] textucoords() nothrow @property @nogc @safe {return _textucoords;}
+	private vec2[3] _texturecoords;
+	vec2[3] texturecoords() nothrow @property @nogc @safe {return _texturecoords;}
 
-	private VColor _groundColor;
+	private vec2[3] _colorTexturecoords; /* Texture coordinates to utilise when coloring texture, makes sure all pixels are colored */
+
+	private Color _groundColor;
 
 	private Biome _biome;
 
 	Tile*[12] neighbours;
 
-	this(size_t tileID, Planet planet) {
+	this(size_t tileID, Planet planet, vec2i textureSize) {
 		this._tileID = tileID;
 		this._planet = planet;
 
 		_biome = Biome(Biome.Types.PLAIN, 3);
-		_groundColor = Biome.biomeColor(_biome.biomeType);
 
 		_vertices = _planet.icoSphere.positions[_tileID * 3 .. (_tileID + 1) * 3];
 		_normal = _planet.icoSphere.normals[_tileID * 3];
-		_textucoords = _planet.icoSphere.texturecoords[_tileID * 3 .. (_tileID + 1) * 3];
+		_texturecoords = _planet.icoSphere.texturecoords[_tileID * 3 .. (_tileID + 1) * 3];
+		vec2i[3] offsets = _planet.icoSphere.texturecoordOffsets[_tileID * 3 .. (_tileID + 1) * 3];
+		vec2 pixelSize = vec2(1.0f / textureSize.x, 1.0f / textureSize.y);
+		_colorTexturecoords[0].x = _texturecoords[0].x + offsets[0].x * pixelSize.x; _colorTexturecoords[0].y = _texturecoords[0].y + offsets[0].y * pixelSize.y;
+		_colorTexturecoords[1].x = _texturecoords[1].x + offsets[1].x * pixelSize.x; _colorTexturecoords[1].y = _texturecoords[1].y + offsets[1].y * pixelSize.y;
+		_colorTexturecoords[2].x = _texturecoords[2].x + offsets[2].x * pixelSize.x; _colorTexturecoords[2].y = _texturecoords[2].y + offsets[2].y * pixelSize.y;
 
 		neighbours = getNeighbours();
+
+		setColor(_biome.calculateColor());
 	}
 
 	/* Called periodicly, not every frame. time is in milliseconds and is the time since the last call of this function */
 	void update(long time) {
-		int newBiomeStrength = _biome.biomeStrength;
+		float newBiomeStrength = _biome.biomeStrength;
 		Biome.Types newBiomeType = _biome.biomeType;
 
 		foreach(tile; neighbours) {
 			if(tile is null) break;
 			if(tile._biome.biomeStrength > _biome.biomeStrength) {
-				int pressure = tile._biome.biomeStrength - _biome.biomeStrength;
+				float pressure = tile._biome.biomeStrength - _biome.biomeStrength;
 				if(newBiomeType == tile._biome.biomeType) {
-					newBiomeStrength += cast(int)round((time / 2000.0f) * pressure);
+					newBiomeStrength += cast(float)round((time / 2000.0f) * pressure);
 				} else {
-					newBiomeStrength -= cast(int)round((time / 4000.0f) * pressure);
+					newBiomeStrength -= cast(float)round((time / 4000.0f) * pressure);
 					if(newBiomeStrength < 0) {
 						newBiomeType = tile._biome.biomeType;
 						newBiomeStrength *= -1;
@@ -61,6 +69,18 @@ struct Tile {
 				}
 			}
 		}
+
+		if(newBiomeStrength != _biome.biomeStrength || newBiomeType != _biome.biomeType) {
+			setColor(_biome.calculateColor());
+		}
+	}
+
+	void setColor(Color color) {
+		_planet.texture.changePixels(_colorTexturecoords[0],
+							  _colorTexturecoords[1],
+							  _colorTexturecoords[2],
+							  color);
+		_groundColor = color;
 	}
 
 	/// Return the vertices in common between the two tiles

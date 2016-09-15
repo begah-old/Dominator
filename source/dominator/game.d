@@ -28,6 +28,7 @@ class Game {
     controller = new CameraController(camera, window);
 
 	window.addCallBack(&key);
+	window.addCallBack(&mouse);
 
     planet = new Planet(vec3(0), 5);
 
@@ -46,6 +47,29 @@ class Game {
 	if(key == GLFW_KEY_KP_1) camera.lookAt(_boxes[1].position);
 	if(key == GLFW_KEY_KP_2) camera.lookAt(_boxes[2].position);
 	if(key == GLFW_KEY_KP_3) camera.lookAt(_boxes[3].position);
+  }
+
+  void mouse(double x, double y, int button, int action) nothrow {
+	if(button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+		Ray ray = camera.getRay(x, y);
+		ptrdiff_t tileID = -1;
+		size_t length = 1000000;
+
+		foreach(i; 0 .. planet.tileCount) {
+			if(ray.intersects(planet.tiles[i].vertices[0], planet.tiles[i].vertices[1], planet.tiles[i].vertices[2])) {
+				vec3 middle = (planet.tiles[i].vertices[0] + planet.tiles[i].vertices[1] + planet.tiles[i].vertices[2]) / 3.0f;
+				middle -= camera.translation;
+				if(middle.length < length) {
+					tileID = i;
+					length = cast(size_t)middle.length;
+				}
+			}
+		}
+
+		if(tileID != -1) {
+			planet.selectedTile = tileID;
+		}
+	}
   }
 
   void update(float delta) {

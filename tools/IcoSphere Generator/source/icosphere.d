@@ -11,6 +11,8 @@ import std.array;
 
 import gl3n.linalg;
 
+import camera;
+
 struct Logger {
   static void info(T) (T t) {
     writeln(t);
@@ -23,10 +25,12 @@ struct Vertex {
   vec3 position;
   vec3 normal;
   vec2 textcoord;
+
+  vec2i textcoordOffset;
 }
 
 Vertex[] ReadFile(int subdivisionLevel) {
-  File f = File("C:/Users/Begah/Documents/Dominator/tools/IcoSphere Generator/assets/" ~ to!string(subdivisionLevel) ~ ".obj");
+  File f = File("C:/Users/Mathieu Roux/Documents/D Workspace/Dominator/tools/IcoSphere Generator/assets/" ~ to!string(subdivisionLevel) ~ ".obj");
 
   vec3[] vertices, normals;
   vec2[] textcoords;
@@ -105,6 +109,9 @@ class IsoSphere {
   Vertex[] vertices;
 
   private vec2[] intervals; /* Height intervals to determine on which level a triangle resides */
+  int[] levelIndices;
+
+  Camera camera;
 
   this(int subdivisionLevel) {
     this.subdivisionLevel = subdivisionLevel;
@@ -113,24 +120,32 @@ class IsoSphere {
           this.levelCount = 6;
           this.levelMaxSize = 5;
           intervals = [vec2(0, 0.25f), vec2(0.27f, 0.5f), vec2(0.52f, 0.72f), vec2(0.73f, 0.89f), vec2(0.9f, 0.96f), vec2(0.97f, 1.0f)];
+		  levelIndices = [0, 5, 20, 45, 80, 120, 160, 200, 240, 275, 300, 315];
           break;
         case 4:
           this.levelCount = 12;
           this.levelMaxSize = 9;
           intervals = [vec2(0.0f, 0.1f), vec2(0.17f, 0.24f), vec2(0.28f, 0.37f), vec2(0.38f, 0.49f), vec2(0.49f, 0.596f), vec2(0.598f, 0.7f), vec2(0.7f, 0.8f), vec2(0.8f, 0.87f), vec2(0.88f, 0.93f), vec2(0.93f, 0.97f), vec2(0.97f, 0.99f), vec2(0.99f, 1.0f)];
-          break;
+          levelIndices = [0, 5, 20, 45, 80, 125, 180, 245, 320, 400, 480, 560, 640, 720, 800, 880, 960, 1035, 1100, 1155, 1200, 1235, 1260, 1275];
+		  break;
         case 5:
           this.levelCount = 24;
           this.levelMaxSize = 17;
 		      intervals = [vec2(0.0f, 0.05f), vec2(0.08f, 0.12f), vec2(0.15f, 0.19f), vec2(0.2f, 0.26f), vec2(0.27f, 0.324125f), vec2(0.324125f, 0.382f), vec2(0.386f, 0.44f), vec2(0.44f, 0.492f), vec2(0.497f, 0.546099f), vec2(0.546099f, 0.6f), vec2(0.6f, 0.653169f), vec2(0.653169f, 0.701903f), vec2(0.701903f, 0.753809f),
 			vec2(0.753809f, 0.801878f), vec2(0.801878f, 0.844915f), vec2(0.844915f, 0.8763f), vec2(0.8763f, 0.909918f), vec2(0.909918f, 0.934339f), vec2(0.934339f, 0.95788f), vec2(0.95788f, 0.972845f), vec2(0.972845f, 0.98495f), vec2(0.98495f, 0.992089f), vec2(0.992089f, 0.997323f), vec2(0.997323f, 1.0f)];
-          break;
+          levelIndices = [0, 5, 20, 45, 80, 125, 180, 245, 320, 405, 500, 605, 720, 845, 980, 1125, 1280, 1440, 1600, 1760, 1920, 2080, 2240, 2400, 2560, 2720, 2880, 3040, 3200, 3360, 3520, 3680, 3840, 3995, 4140, 4275, 4400, 4515, 4620, 4715, 4800, 4875, 4940, 4995, 5040, 5075, 5100, 5115];
+		  break;
         default: assert("Such icoSphere is not supported : " ~ to!string(subdivisionLevel) ~ " (subdivisionLevel)");
     }
+
+	camera = new Camera(vec2i(640, 480), vec3(0));
 
     Vertex[] unorganizedVertices = ReadFile(subdivisionLevel);
 
     vertices = new Vertex[unorganizedVertices.length];
+
+	const float textureCoordNearEdge = 0.002f; // Texture coord that signifies it's the closest to the lower edge
+	int countVerticesHorizontal, countVerticesVertical;
 
     for(int _i = 0; _i < unorganizedVertices.length; _i += 3) {
 		if(unorganizedVertices[_i + 2].position.y != 1) continue;
@@ -247,6 +262,113 @@ class IsoSphere {
 		}
 		break;
 	}
+
+	// Put vertices in count-clockwise
+	for(int i = 0; i < vertices.length; i += 3) {
+		vec3 middle = (vertices[i].position + vertices[i + 1].position + vertices[i + 2].position) / 3.0f;
+		camera.setTranslation(vertices[i].normal * 3);
+		camera.lookAt(middle);
+		camera.update(0);
+		if(!isCounterClockwise(vertices[i .. i + 3])) {
+			Vertex temp = vertices[i + 1];
+			vertices[i + 1] = vertices[i + 2];
+			vertices[i + 2] = temp;
+		}
+
+		// And count number of vertices horizontally and vertically
+		foreach(ref tile; vertices[i .. i + 3]) {
+			if(tile.textcoord.x == textureCoordNearEdge)
+				countVerticesVertical++;
+			if(tile.textcoord.y == textureCoordNearEdge)
+				countVerticesHorizontal++;
+		}
+	}
+
+	// Add space between texturecoordinates
+	const double spaceBetween = 0.05;
+
+	double oldWidth = 1.0 / countVerticesHorizontal;
+	double oldHeight = 1.0 / countVerticesVertical;
+
+	double newWidth = 1.0 / countVerticesHorizontal;
+	double newHeight = 1.0 / countVerticesVertical;
+
+	double triangleXOffset = spaceBetween / 2.0;
+	double triangleYOffset = spaceBetween / 2.0;
+
+	double triangleWidth = newWidth - triangleXOffset * 2.0;
+	double triangleHeight = newHeight - triangleYOffset * 2.0;
+
+	foreach(i; 0 .. vertices.length / 3) {
+		Vertex *v1 = &vertices[i * 3];
+		Vertex *v2 = &vertices[i * 3 + 1];
+		Vertex *v3 = &vertices[i * 3 + 2];
+
+		vec2 middle = (v1.textcoord + v2.textcoord + v3.textcoord) / 3;
+
+		int triangleX = cast(int)std.math.floor(middle.x / oldWidth);
+		int triangleY = cast(int)std.math.floor(middle.y / oldHeight);
+
+		double bottomX = triangleX * newWidth;
+		double bottomY = triangleY * newHeight;
+
+		bool isUpsideDown = false;
+		{
+			int count = 0;
+			if(v1.textcoord.y > middle.y) count++;
+			if(v2.textcoord.y > middle.y) count++;
+			if(v3.textcoord.y > middle.y) count++;
+
+			isUpsideDown = count == 2;
+		}
+
+		void workVertice(Vertex *v) {
+			if(isUpsideDown == false) {
+				if(v.textcoord.x < middle.x) {
+					v.textcoord.x = bottomX + triangleXOffset / 8.0;
+					v.textcoordOffset.x = -1;
+				} else {
+					v.textcoord.x = bottomX + newWidth - triangleXOffset / 2.0;
+					v.textcoordOffset.x = 1;
+				}
+
+				if(v.textcoord.y < middle.y) {
+					v.textcoord.y = bottomY + triangleYOffset / 4.0;
+					v.textcoordOffset.y = -1;
+				} else {
+					v.textcoord.y = bottomY + newHeight - triangleYOffset / 2.0;
+					v.textcoordOffset.y = 1;
+				}
+			} else {
+				if(v.textcoord.x < middle.x) {
+					v.textcoord.x = bottomX + triangleXOffset / 2.0;
+					v.textcoordOffset.x = -1;
+				} else {
+					v.textcoord.x = bottomX + newWidth - triangleXOffset / 8.0;
+					v.textcoordOffset.x = 1;
+				}
+
+				if(v.textcoord.y < middle.y) {
+					v.textcoord.y = bottomY + triangleYOffset / 2.0;
+					v.textcoordOffset.y = -1;
+				} else {
+					v.textcoord.y = bottomY + newHeight - triangleYOffset / 4.0;
+					v.textcoordOffset.y = 1;
+				}
+			}
+		}
+
+		workVertice(v1);
+		workVertice(v2);
+		workVertice(v3);
+	}
+  }
+
+  bool isCounterClockwise(Vertex[] vertex) {
+	vec4[3] _4d = [camera.projectionMatrix * camera.viewMatrix * vec4(vertex[0].position, 1.0f), camera.projectionMatrix * camera.viewMatrix * vec4(vertex[1].position, 1.0f), camera.projectionMatrix * camera.viewMatrix * vec4(vertex[2].position, 1.0f)];
+	vec3[3] ndc = [_4d[0].xyz / _4d[0].w, _4d[1].xyz / _4d[1].w, _4d[2].xyz / _4d[2].w];
+
+	return cross(vec3(ndc[1].xy - ndc[0].xy, 0), vec3(ndc[2].xy - ndc[0].xy, 0)).z > 0;
   }
 
   /* Calculate where the triangle is in memory */

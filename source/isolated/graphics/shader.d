@@ -188,7 +188,7 @@ class Shader
 		glUniform4i(uniforms[name], vector.x, vector.y, vector.z, vector.w);
 	}
 
-	void uniform(string name, VColor color) nothrow {
+	void uniform(string name, Color color) nothrow {
 		uniform(name, vec4(color.r / 255f, color.g / 255f, color.b / 255f, color.a / 255f));
 	}
 

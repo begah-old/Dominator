@@ -2,6 +2,7 @@
 
 public import isolated.math.ray;
 public import isolated.math.icosphere;
+public import isolated.math.boundingbox;
 
 public import gl3n.linalg;
 public import gl3n.plane;

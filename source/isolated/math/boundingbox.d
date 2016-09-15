@@ -6,8 +6,8 @@ import std.conv;
 @safe @nogc nothrow:
 
 interface BoundingBox {
-	BoundingBox fromPoints(vec3[] points...);
-	BoundingBox fromPoints(float[] points...);
+	static BoundingBox fromPoints(vec3[] points...);
+	static BoundingBox fromPoints(float[] points...);
 
 	void expand(float[3] points);
 
@@ -15,7 +15,7 @@ interface BoundingBox {
 	bool intersects(vec3 point);
 }
 
-class Sphere : BoundingBox {
+class BoundingSphere : BoundingBox {
 	private {
 		vec3 totalPoints;
 		int numberOfPoints;
@@ -24,12 +24,12 @@ class Sphere : BoundingBox {
 	vec3 center;
 	float squaredRaduis, raduis;
 
-	Sphere fromPoints(vec3[] points...) {
+	static BoundingSphere fromPoints(vec3[] points...) {
 		if(points.length == 0) {
 			return null;
 		}
 		
-		Sphere sphere = new Sphere();
+		BoundingSphere sphere = new BoundingSphere();
 
 		sphere.center = points[0];
 
@@ -40,13 +40,13 @@ class Sphere : BoundingBox {
 		return sphere;
 	}
 
-	Sphere fromPoints(float[] points...)  in { assert(points.length % 3 == 0, "Number of points should be divisible by 3"); } 
+	static BoundingSphere fromPoints(float[] points...)  in { assert(points.length % 3 == 0, "Number of points should be divisible by 3"); } 
 	body {
 		if(points.length == 0) {
 			return null;
 		}
 		
-		Sphere sphere = new Sphere();
+		BoundingSphere sphere = new BoundingSphere();
 
 		sphere.center = vec3(points[0 .. 3]);
 		
@@ -99,15 +99,15 @@ class Sphere : BoundingBox {
 	}
 }
 
-class Cube {
+class BoundingCube {
 	vec3 min, max;
 
-	Cube fromPoints(vec3[] points...) {
+	static BoundingCube fromPoints(vec3[] points...) {
 		if(points.length == 0) {
 			return null;
 		}
 		
-		Cube cube = new Cube();
+		BoundingCube cube = new BoundingCube();
 		
 		cube.min = points[0];
 		cube.max = points[0];
@@ -118,13 +118,13 @@ class Cube {
 		return cube;
 	}
 	
-	Cube fromPoints(float[] points...)  in { assert(points.length % 3 == 0, "Number of points should be divisible by 3"); } 
+	static BoundingCube fromPoints(float[] points...)  in { assert(points.length % 3 == 0, "Number of points should be divisible by 3"); } 
 	body {
 		if(points.length == 0) {
 			return null;
 		}
 		
-		Cube cube = new Cube();
+		BoundingCube cube = new BoundingCube();
 		
 		cube.min = vec3(points[0..3]);
 		cube.max = vec3(points[0..3]);

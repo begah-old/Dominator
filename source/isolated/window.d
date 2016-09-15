@@ -48,15 +48,23 @@ extern(C) void CScrollCallBack(GLFWwindow *window, double x, double y) nothrow
 	}
 }
 
+extern(C) void CCursorButtonCallBack(GLFWwindow* window, int button, int action, int mods) nothrow
+{
+	long hash = cast(long)window;
+	if(hash in Window_List) {
+		Window_List[hash].MouseCallBack(button, action, mods);
+	}
+}
+
 private alias f_keyCallback = void function(int key, int action, int mods) nothrow;
 private alias f_characterCallback = void function(uint character) nothrow;
 private alias f_cursorCallBack = void function(double x, double y) nothrow;
-private alias f_mouseCallBack = void function(int button, int action) nothrow;
+private alias f_mouseCallBack = void function(double x, double y, int button, int action) nothrow;
 
 private alias d_keyCallback = void delegate(int key, int action, int mods) nothrow;
 private alias d_characterCallback = void delegate(uint character) nothrow;
 private alias d_cursorCallBack = void delegate(double x, double y) nothrow;
-private alias d_mouseCallBack = void delegate(int button, int action) nothrow;
+private alias d_mouseCallBack = void delegate(double x, double y, int button, int action) nothrow;
 
 class Window {
 	GLFWwindow *window;
@@ -116,6 +124,7 @@ class Window {
 		glfwSetKeyCallback(window, &CKeyCallBack);
 		glfwSetCursorPosCallback(window, &CCursorCallBack);
 		glfwSetScrollCallback(window, &CScrollCallBack);
+		glfwSetMouseButtonCallback(window, &CCursorButtonCallBack);
 
 		glfwMakeContextCurrent(window);
 
@@ -190,11 +199,11 @@ class Window {
 	}
 
 	private void CursorCallBack(double x, double y) nothrow {
-		cursorPosition.x = x; cursorPosition.y = y;
+		cursorPosition.x = x; cursorPosition.y = height - y;
 		foreach(cb; this.f_cursorCallbacks) {
-			cb(x, y);
+			cb(x, height - y);
 		}foreach(cb; this.d_cursorCallbacks) {
-			cb(x, y);
+			cb(x, height - y);
 		}
 	}
 
@@ -208,9 +217,9 @@ class Window {
 
 	private void MouseCallBack(int button, int action, int mods) nothrow {
 		foreach(cb; this.f_mouseCallbacks) {
-			cb(button, action);
+			cb(cursorPosition.x, cursorPosition.y, button, action);
 		}foreach(cb; this.d_mouseCallbacks) {
-			cb(button, action);
+			cb(cursorPosition.x, cursorPosition.y, button, action);
 		}
 	}
 

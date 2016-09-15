@@ -67,6 +67,12 @@ struct Color {
 	this(ubyte r, ubyte g, ubyte b, ubyte a = 255) {
 		rgba[0 .. 4] = [ r, g, b, a ];
 	}
-}
 
-alias Color VColor;
+	Color opBinary(string op, T)(T rhs) {
+		foreach(ref ub; rgba) {
+			mixin("ub = cast(ubyte)(ub " ~ op ~ " rhs);");
+		}
+
+		return this;
+	}
+}

@@ -76,7 +76,7 @@ struct Texture
 	}
 
 	void bind(int level = 0) {
-		if(_triangleBufferCount) PixelChangeFlush();
+		if(_isDirty) PixelChangeFlush();
 
 		glActiveTexture(GL_TEXTURE0 + level);
 		glBindTexture(GL_TEXTURE_2D, id);
@@ -87,7 +87,7 @@ struct Texture
 		glActiveTexture(GL_TEXTURE0);
 	}
 
-	void changePixel(int x, int y, VColor color) in {assert(mode != Mode.LOADED);}
+	void changePixel(int x, int y, Color color) in {assert(mode != Mode.LOADED);}
 	body {
 		if(mode == Mode.RGBA) {
 			pixels[(x + y * width) * 4] = color.r;
@@ -108,11 +108,12 @@ struct Texture
 
 	/* Drawing to a texture ( for multiple pixels, draws only triangles ) */
 	private bool _isDirty = false;
+	bool isDirty() @property @safe @nogc nothrow {return _isDirty;}
 	private FrameBuffer* _frameBuffer = null;
 
 	private enum Triangle_Buffer_Size = 3;
 	private vec2[Triangle_Buffer_Size * 3] _triangleBuffer;
-	private VColor[Triangle_Buffer_Size] _color;
+	private Color[Triangle_Buffer_Size] _color;
 	private int _triangleBufferCount;
 
 	private static Shader _framebufferShader = null;
@@ -158,7 +159,7 @@ struct Texture
 	}
 	
 	/* Draws a triangle on the specific texture, vectors are in texture coordinates */
-	void changePixels(vec2 v1, vec2 v2, vec2 v3, VColor color) nothrow in {assert(mode != Mode.LOADED);}
+	void changePixels(vec2 v1, vec2 v2, vec2 v3, Color color) nothrow in {assert(mode != Mode.LOADED);}
 	body {
 		if(_isDirty == false) {
 			_isDirty = true;

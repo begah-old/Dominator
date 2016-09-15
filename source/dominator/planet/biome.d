@@ -10,30 +10,31 @@ struct Biome {
 		SAND_DESERT,
 		SNOW_DESERT
 	}
+	enum Max_Strenght = 3.0f;
 
 	private Types _biomeType;
 	public Types biomeType() @property { return _biomeType; }
 
-	private int _biomeStrength;
-	public ref int biomeStrength() @property { return _biomeStrength; }
+	private float _biomeStrength;
+	public ref float biomeStrength() @property { return _biomeStrength; }
 
-	this(Types biomeType, int biomeStrength) {
+	this(Types biomeType, float biomeStrength) {
 		this._biomeType = biomeType;
 		this._biomeStrength = biomeStrength;
 	}
 
-	static VColor biomeColor(Types biome) {
-		switch(biome) {
+	Color calculateColor() {
+		switch(_biomeType) {
 			case Types.RAINFOREST:
-				return Color(0, 180, 0);
+				return Color(0, 180, 0) * (_biomeStrength / Max_Strenght);
 			case Types.FOREST:
-				return Color(0, 200, 0);
+				return Color(0, 200, 0) * (_biomeStrength / Max_Strenght);
 			case Types.PLAIN:
-				return Color(0, 255, 0);
+				return Color(0, 255, 0) * (_biomeStrength / Max_Strenght);
 			case Types.SAND_DESERT:
-				return Color(255, 255, 0);
+				return Color(255, 255, 0) * (_biomeStrength / Max_Strenght);
 			case Types.SNOW_DESERT:
-				return Color(100, 100, 255);
+				return Color(100, 100, 255) * (_biomeStrength / Max_Strenght);
 			default: return Color(0, 0, 0);
 		}
 	}
