@@ -2,6 +2,7 @@ module dominator.planet.tile;
 
 import isolated.math;
 import isolated.graphics.utils.opengl;
+import isolated.utils.logger;
 
 import dominator.planet.planet;
 import dominator.planet.biome;
@@ -23,9 +24,13 @@ struct Tile {
 
 	private vec2[3] _colorTexturecoords; /* Texture coordinates to utilise when coloring texture, makes sure all pixels are colored */
 
-	private Color _groundColor;
+	Color _groundColor;
+
+	static immutable float BIOME_CHANGE_CONSTANT = 1f; // How hard it is to put pressure on a biome and force it to change
 
 	private Biome _biome;
+	Biome _newBiome;
+	ref Biome biome() nothrow @property @nogc @safe {return _biome;}
 
 	Tile*[12] neighbours;
 
@@ -34,52 +39,64 @@ struct Tile {
 		this._planet = planet;
 
 		_biome = Biome(Biome.Types.PLAIN, 3);
+		_newBiome = _biome;
 
 		_vertices = _planet.icoSphere.positions[_tileID * 3 .. (_tileID + 1) * 3];
 		_normal = _planet.icoSphere.normals[_tileID * 3];
 		_texturecoords = _planet.icoSphere.texturecoords[_tileID * 3 .. (_tileID + 1) * 3];
-		vec2i[3] offsets = _planet.icoSphere.texturecoordOffsets[_tileID * 3 .. (_tileID + 1) * 3];
-		vec2 pixelSize = vec2(1.0f / textureSize.x, 1.0f / textureSize.y);
-		_colorTexturecoords[0].x = _texturecoords[0].x + offsets[0].x * pixelSize.x; _colorTexturecoords[0].y = _texturecoords[0].y + offsets[0].y * pixelSize.y;
-		_colorTexturecoords[1].x = _texturecoords[1].x + offsets[1].x * pixelSize.x; _colorTexturecoords[1].y = _texturecoords[1].y + offsets[1].y * pixelSize.y;
-		_colorTexturecoords[2].x = _texturecoords[2].x + offsets[2].x * pixelSize.x; _colorTexturecoords[2].y = _texturecoords[2].y + offsets[2].y * pixelSize.y;
+		_colorTexturecoords = _planet.icoSphere.texturecoordOffsets[_tileID * 3 .. (_tileID + 1) * 3];
 
 		neighbours = getNeighbours();
 
 		setColor(_biome.calculateColor());
 	}
 
-	/* Called periodicly, not every frame. time is in milliseconds and is the time since the last call of this function */
-	void update(long time) {
-		float newBiomeStrength = _biome.biomeStrength;
-		Biome.Types newBiomeType = _biome.biomeType;
+	/* Called periodicly, not every frame. time is in milliseconds and is the time since the last call of this function 
+		Update the biome*/
+	void updateBiome(long time) {
+		const float BIOME_PRESSURE_CONSTANT = 10.0f;
+		_newBiome = _biome;
+
+		float totalPressure = 0;
+		float maxPressure = 0; // Biome to exerce the most pressure on tile
+		Biome.Types maxPressureID = Biome.Types.NONE; // Biome id to exerce the most pressure on tile
+		int tilePressureCount;
 
 		foreach(tile; neighbours) {
 			if(tile is null) break;
-			if(tile._biome.biomeStrength > _biome.biomeStrength) {
-				float pressure = tile._biome.biomeStrength - _biome.biomeStrength;
-				if(newBiomeType == tile._biome.biomeType) {
-					newBiomeStrength += cast(float)round((time / 2000.0f) * pressure);
-				} else {
-					newBiomeStrength -= cast(float)round((time / 4000.0f) * pressure);
-					if(newBiomeStrength < 0) {
-						newBiomeType = tile._biome.biomeType;
-						newBiomeStrength *= -1;
-					}
+
+			if(tile._biome.biomeType == _biome.biomeType)
+				totalPressure -= (tile._biome.biomeStrength / (_biome.biomeStrength * BIOME_PRESSURE_CONSTANT));
+			else {
+				totalPressure += (tile._biome.biomeStrength / (_biome.biomeStrength * BIOME_PRESSURE_CONSTANT));
+				
+				if(tile._biome.biomeStrength > maxPressure) {
+					maxPressure = tile._biome.biomeStrength;
+					maxPressureID = tile._biome.biomeType;
 				}
 			}
+			tilePressureCount++;
 		}
 
-		if(newBiomeStrength != _biome.biomeStrength || newBiomeType != _biome.biomeType) {
-			setColor(_biome.calculateColor());
-		}
+		_newBiome.biomeStrengthRef -= totalPressure;
+		if(_newBiome.biomeStrength < 0) {
+			_newBiome.biomeType = maxPressureID;
+			_newBiome.biomeStrengthRef *= -1.0f;
+		} else if(_newBiome.biomeStrength > Biome.Max_Strenght)
+			_newBiome.biomeStrengthRef = Biome.Max_Strenght;
+
+		setColor(_newBiome.calculateColor());
 	}
 
-	void setColor(Color color) {
+	void update(float time) {
+		_biome = _newBiome;
+	}
+
+	void setColor(Color color) nothrow {
 		_planet.texture.changePixels(_colorTexturecoords[0],
-							  _colorTexturecoords[1],
-							  _colorTexturecoords[2],
-							  color);
+								  _colorTexturecoords[1],
+								  _colorTexturecoords[2],
+								  color);
 		_groundColor = color;
 	}
 

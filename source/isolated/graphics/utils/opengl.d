@@ -30,7 +30,7 @@ private {
 }
 
 void checkError(string filename = __FILE__, size_t line = __LINE__) nothrow @nogc {
-	int err = glGetError(); 
+	/*int err = glGetError(); 
 	if(err != GL_NO_ERROR) {
 		char["Opengl Error : ".length + 20] Error_String;
 		Error_String[0 .. "Opengl Error: ".length] = "Opengl Error: ";
@@ -39,11 +39,13 @@ void checkError(string filename = __FILE__, size_t line = __LINE__) nothrow @nog
 		Error_String["Opengl Error: ".length .. "Opengl Error: ".length + temp.length] = temp;
 		Error_String["Opengl Error: ".length + temp.length] = '\0';
 		Logger.error(temp, filename, line);
-	}
+	}*/
 }
 
 struct Color {
 	ubyte[4] rgba;
+
+	@safe nothrow @nogc :
 
 	private @property ref inout(ubyte) get_(char coord)() inout {
         return rgba[coord_to_index!coord];
@@ -65,7 +67,7 @@ struct Color {
 		rgba[0 .. 4] = color;
 	}
 	this(ubyte r, ubyte g, ubyte b, ubyte a = 255) {
-		rgba[0 .. 4] = [ r, g, b, a ];
+		rgba[0] = r; rgba[1] = g; rgba[2] = b; rgba[3] = a;
 	}
 
 	Color opBinary(string op, T)(T rhs) {

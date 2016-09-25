@@ -26,7 +26,7 @@ struct Vertex {
   vec3 normal;
   vec2 textcoord;
 
-  vec2i textcoordOffset;
+  vec2 textcoordOffset;
 }
 
 Vertex[] ReadFile(int subdivisionLevel) {
@@ -324,38 +324,28 @@ class IsoSphere {
 
 		void workVertice(Vertex *v) {
 			if(isUpsideDown == false) {
-				if(v.textcoord.x < middle.x) {
+				if(v.textcoord.x < middle.x)
 					v.textcoord.x = bottomX + triangleXOffset / 8.0;
-					v.textcoordOffset.x = -1;
-				} else {
+				else
 					v.textcoord.x = bottomX + newWidth - triangleXOffset / 2.0;
-					v.textcoordOffset.x = 1;
-				}
 
-				if(v.textcoord.y < middle.y) {
+				if(v.textcoord.y < middle.y)
 					v.textcoord.y = bottomY + triangleYOffset / 4.0;
-					v.textcoordOffset.y = -1;
-				} else {
+				else
 					v.textcoord.y = bottomY + newHeight - triangleYOffset / 2.0;
-					v.textcoordOffset.y = 1;
-				}
 			} else {
-				if(v.textcoord.x < middle.x) {
+				if(v.textcoord.x < middle.x)
 					v.textcoord.x = bottomX + triangleXOffset / 2.0;
-					v.textcoordOffset.x = -1;
-				} else {
+				else
 					v.textcoord.x = bottomX + newWidth - triangleXOffset / 8.0;
-					v.textcoordOffset.x = 1;
-				}
 
-				if(v.textcoord.y < middle.y) {
+				if(v.textcoord.y < middle.y)
 					v.textcoord.y = bottomY + triangleYOffset / 2.0;
-					v.textcoordOffset.y = -1;
-				} else {
+				else
 					v.textcoord.y = bottomY + newHeight - triangleYOffset / 4.0;
-					v.textcoordOffset.y = 1;
-				}
 			}
+			
+			v.textcoordOffset = (v.textcoord - middle) * 1.04f + middle;
 		}
 
 		workVertice(v1);

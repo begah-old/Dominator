@@ -33,20 +33,26 @@ int main() {
 
 	core.memory.GC.collect();
 
-	Timer timer;
+	Timer timer = Timer();
 	long lastFrameTime;
+	long updateAndRenderTime;
+	long initialSetupTime;
 
 	while(window.shouldClose() == false) {
-		timer.reset();
+		timer = timer.reset();
 
         glViewport(0, 0, window.screenDimension.x, window.screenDimension.y);
     	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
     	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 
+		initialSetupTime = timer.elapsedTime;
+
 		checkError();
 
 		game.update(lastFrameTime);
 		game.render();
+
+		updateAndRenderTime = timer.elapsedTime;
 
 		checkError();
 		window.refresh();
@@ -54,12 +60,15 @@ int main() {
 		core.memory.GC.collect();
 
 		lastFrameTime = timer.elapsedTime;
+
+		//Logger.info("Total time : " ~ lastFrameTime.to!string ~ " while it took " ~ updateAndRenderTime.to!string ~ " time to update and render and " ~ initialSetupTime.to!string ~ " to set up next frame");
 	}
 
 	ModelManager.purge();
 	TextureManager.purge();
 
 	window.close();
+	readln();
 
 	return 0;
 }

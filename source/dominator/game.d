@@ -30,7 +30,7 @@ class Game {
 	window.addCallBack(&key);
 	window.addCallBack(&mouse);
 
-    planet = new Planet(vec3(0), 5);
+    planet = new Planet(vec3(0), 3);
 
 	model = Model.create(Mesh.Box(), planet.shader);
 

@@ -3,7 +3,10 @@ module dominator.planet.biome;
 import isolated.graphics.utils.opengl;
 
 struct Biome {
+	@safe nothrow @nogc :
+
 	enum Types {
+		NONE,
 		RAINFOREST,
 		FOREST,
 		PLAIN,
@@ -13,10 +16,11 @@ struct Biome {
 	enum Max_Strenght = 3.0f;
 
 	private Types _biomeType;
-	public Types biomeType() @property { return _biomeType; }
+	public ref Types biomeType() @property { return _biomeType; }
 
 	private float _biomeStrength;
-	public ref float biomeStrength() @property { return _biomeStrength; }
+	public float biomeStrength() @property { return _biomeStrength; }
+	public ref float biomeStrengthRef() @property { return _biomeStrength; }
 
 	this(Types biomeType, float biomeStrength) {
 		this._biomeType = biomeType;

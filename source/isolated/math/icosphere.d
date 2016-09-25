@@ -22,8 +22,8 @@ class IcoSphere {
 	private vec2[] _texturecoords; /* Actual texture coordinates of the sphere in order */
 	ref vec2[] texturecoords() @property @safe @nogc nothrow {return this._texturecoords;}
 
-	private vec2i[] _texturecoord_offsets; /* Offset needed to render more than enough pixels for a full colored triangle expressed in pixels */
-	ref vec2i[] texturecoordOffsets() @property @safe @nogc nothrow {return this._texturecoord_offsets;}
+	private vec2[] _texturecoord_offsets; /* Offset needed to render more than enough pixels for a full colored triangle expressed in pixels */
+	ref vec2[] texturecoordOffsets() @property @safe @nogc nothrow {return this._texturecoord_offsets;}
 
 	private immutable int[] _levelIndeces; /* Place ( in triangles ) the level is in memory */
 
@@ -51,17 +51,16 @@ class IcoSphere {
 		} else assert("Such icoSphere is not supported : " ~ to!string(subdivisionLevel) ~ " (subdivisionLevel)");
 	}
 
-	private void construct(immutable vec3[] pos, immutable vec3[] norms, immutable vec2[] textcoords, immutable vec2i[] textcoord_offsets) {
+	private void construct(immutable vec3[] pos, immutable vec3[] norms, immutable vec2[] textcoords, immutable vec2[] textcoord_offsets) {
 		_positions = new vec3[pos.length * 2];
 		_normals = new vec3[norms.length * 2];
 		_texturecoords = new vec2[textcoords.length * 2];
-		_texturecoord_offsets = new vec2i[textcoord_offsets.length * 2];
+		_texturecoord_offsets = new vec2[textcoord_offsets.length * 2];
 
 		_positions[0..pos.length] = pos;
 		_normals[0..norms.length] = norms;
 		_texturecoords[0..textcoords.length] = textcoords;
 		_texturecoord_offsets[0..textcoord_offsets.length] = textcoord_offsets;
-		_texturecoord_offsets[textcoord_offsets.length .. textcoord_offsets.length * 2] = textcoord_offsets;
 
 		int index = pos.length;
 		
@@ -72,6 +71,7 @@ class IcoSphere {
 			_positions[index .. index + size] = pos[ind .. ind + size];
 			_normals[index .. index + size] = norms[ind .. ind + size];
 			_texturecoords[index .. index + size] = textcoords[ind .. ind + size];
+			_texturecoord_offsets[index .. index + size] = textcoord_offsets[ind .. ind + size];
 
 			index += size;
 		}
@@ -80,6 +80,7 @@ class IcoSphere {
 			_positions[i].y = -_positions[i].y;
 			_normals[i].y = -_normals[i].y;
 			_texturecoords[i].y -= 0.5f;
+			_texturecoord_offsets[i].y -= 0.5f;
 		}
 	}
 

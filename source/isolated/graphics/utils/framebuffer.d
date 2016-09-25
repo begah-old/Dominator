@@ -9,6 +9,7 @@ struct FrameBuffer {
 	private GLuint _buffer;
 	private int texturesAttached;	
 	private GLenum[] _drawBuffer;
+	private GLint[4] old_viewport;
 
 	@disable this();
 
@@ -58,11 +59,15 @@ struct FrameBuffer {
 
 	void bind(int viewportWidth, int viewportHeight) {
 		glBindFramebuffer(GL_FRAMEBUFFER, _buffer);
+
+		glGetIntegerv(GL_VIEWPORT, old_viewport.ptr);
 		glViewport(0, 0, viewportWidth, viewportHeight);
 	}
 
 	void unbind() {
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+		glViewport(old_viewport[0], old_viewport[1], old_viewport[2], old_viewport[3]);
 	}
 
 	void dispose() {

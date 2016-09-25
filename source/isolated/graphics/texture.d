@@ -111,7 +111,7 @@ struct Texture
 	bool isDirty() @property @safe @nogc nothrow {return _isDirty;}
 	private FrameBuffer* _frameBuffer = null;
 
-	private enum Triangle_Buffer_Size = 3;
+	private enum Triangle_Buffer_Size = 500;
 	private vec2[Triangle_Buffer_Size * 3] _triangleBuffer;
 	private Color[Triangle_Buffer_Size] _color;
 	private int _triangleBufferCount;
@@ -174,10 +174,6 @@ struct Texture
 		_triangleBuffer[_triangleBufferCount * 3] = (v1 * 2.0f) - vec2(1f);
 		_triangleBuffer[_triangleBufferCount * 3 + 1] = (v2 * 2.0f) - vec2(1f);
 		_triangleBuffer[_triangleBufferCount * 3 + 2] = (v3 * 2.0f) - vec2(1f);
-		/*Logger.info("PIXELS");
-		Logger.info(_triangleBuffer[_triangleBufferCount * 3]);
-		Logger.info(_triangleBuffer[_triangleBufferCount * 3 + 1]);
-		Logger.info(_triangleBuffer[_triangleBufferCount * 3 + 2]);*/
 
 		_color[_triangleBufferCount] = color;
 		_triangleBufferCount++;
@@ -187,6 +183,8 @@ struct Texture
 		if(_triangleBufferCount == 0) return;
 
 		checkError();
+
+		glDisable(GL_DEPTH_TEST);
 
 		_frameBuffer.bind(width, height);
 
@@ -210,6 +208,8 @@ struct Texture
 		_frameBuffer.unbind();
 
 		_triangleBufferCount = 0;
+
+		glEnable(GL_DEPTH_TEST);
 
 		checkError();
 	}

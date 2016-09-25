@@ -74,11 +74,11 @@ int main() {
 
 	auto textcoord_offset = s.vertices.map!(a => a.textcoordOffset).array;
 
-	fileWrite("static immutable vec2i[] IcoSphere" ~ to!string(subdivisionLevel) ~ "_TextCoords_Offset = [");
+	fileWrite("static immutable vec2[] IcoSphere" ~ to!string(subdivisionLevel) ~ "_TextCoords_Offset = [");
 	foreach(i, t; textcoord_offset) {
-		if(i == textcoord_offset.length - 1) fileWrite("vec2i(", t.x, ", ", t.y, ")");
-		else if((i + 1) % 5 == 0) { fileWriteln("vec2i(", t.x, ", ", t.y, "), "); fileWrite("\t"); }
-		else fileWrite("vec2i(", t.x, ", ", t.y, "), ");
+		if(i == textcoord_offset.length - 1) fileWrite("vec2(", t.x, ", ", t.y / 2.0f + 0.5f, ")");
+		else if((i + 1) % 5 == 0) { fileWriteln("vec2(", t.x, ", ", t.y / 2.0f + 0.5f, "), "); fileWrite("\t"); }
+		else fileWrite("vec2(", t.x, ", ", t.y / 2.0f + 0.5f, "), ");
 	}
 	fileWriteln(" ];\n");
 

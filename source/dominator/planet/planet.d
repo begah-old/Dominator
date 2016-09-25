@@ -19,6 +19,7 @@ import isolated.utils.timer;
 import app : window;
 
 import dominator.planet.tile;
+import dominator.planet.biome;
 
 class Planet {
 	private vec3 _position;
@@ -42,7 +43,7 @@ class Planet {
 	private Tile* _tiles;
 	Tile* tiles() @property @safe nothrow @nogc { return _tiles; }
 
-	private bool wireframe = true, showNeighbours = true;
+	bool wireframe = true, showNeighbours = true;
 
 	size_t selectedTile = 0; // TODO: remove
 	private size_t lastTile = 0; // TODO: remove
@@ -124,6 +125,16 @@ class Planet {
 			wireframe = !wireframe;
 		} else if(key == GLFW_KEY_P && mods == GLFW_MOD_CONTROL) {
 			showNeighbours = !showNeighbours;
+		} else if(key == GLFW_KEY_ENTER) {
+			_texture.changePixels(vec2(0), vec2(1, 0), vec2(1), Color(255, 0, 0));
+			_texture.changePixels(vec2(0), vec2(1), vec2(0, 1), Color(255, 0, 0));
+
+			foreach(ref tile; _tiles[0 .. tileCount]) {
+				tile.setColor(tile._groundColor);
+			}
+		} else if(key == GLFW_KEY_0) {
+			_tiles[selectedTile].biome = _tiles[selectedTile]._newBiome = Biome(Biome.Types.SAND_DESERT, Biome.Max_Strenght);
+			_tiles[selectedTile].setColor(_tiles[selectedTile].biome.calculateColor());
 		}
 	}
 
@@ -131,9 +142,12 @@ class Planet {
 	void update(Camera camera, float delta) {
 		if(_timer.elapsedTime >= 1000) {
 			foreach(i, ref tile; _tiles[0 .. _tileCount]) {
-				tile.update(_timer.elapsedTime);
+				tile.updateBiome(_timer.elapsedTime);
 			}
 			_timer.reset;
+		}
+		foreach(i, ref tile; _tiles[0 .. _tileCount]) {
+			tile.update(delta);
 		}
 	}
 
