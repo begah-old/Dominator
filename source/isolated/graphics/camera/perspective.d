@@ -9,8 +9,6 @@ class PerspectiveCamera : Camera
 		const float FOV = 70;
 	}
 
-	nothrow @safe @nogc :
-
 	this(vec2i viewport) {
 		this(viewport, vec3(0, 0, 0));
 	}
@@ -19,18 +17,16 @@ class PerspectiveCamera : Camera
 		super(viewport, position);
 	}
 
-	override void update(float delta) {
+	override void calculate() {
 		if(_dirty) {
 			projectionMatrix = mat4.perspective(viewport.x, viewport.y, FOV, abs(NEAR_PLANE), abs(FAR_PLANE));
 
 			viewMatrix.make_identity();
 			viewMatrix.translate(-translation);
-			viewMatrix.rotatey(-(yaw - std.math.PI_2)); // Because it is needed that at the start, the camera points toward negative z
+			viewMatrix.rotatey(-(yaw - PI_2)); // Because it is needed that at the start, the camera points toward negative z
 			viewMatrix.rotatex(-pitch);
 
 			_dirty = false;
 		}
-
-		super.update(delta);
 	}
 }

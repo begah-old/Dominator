@@ -8,7 +8,6 @@ import isolated.file;
 import isolated.graphics.shader;
 
 import imageformats;
-import isolated.utils.assets;
 import isolated.utils.logger;
 import isolated.graphics.vertexattribute;
 
@@ -18,12 +17,9 @@ import std.array;
 
 import isolated.math;
 
-alias TextureManager = ResourceManager!(Texture, __loadTexture, __freeTexture, "isolated.graphics.texture");
-alias TextureType = TextureManager.Handle;
-
-struct Texture
+class Texture
 {
-	enum Mode {LOADED = 0, R = 1, RGB = 3, RGBA = 4};
+	enum Mode {LOADED = 0, R = 1, RGB = 3, RGBA = 4, DEPTH = 5};
 
 	union {
 		string name;
@@ -33,16 +29,31 @@ struct Texture
 	int width, height;
 	GLuint id;
 	Mode mode;
+	uint glMode;
 
-	alias TextureManager.get load;
+	alias load = __loadTexture;
+
+	private static Mode glModeToEnum(uint mode) {
+		switch(mode) {
+			case GL_RED:
+				return Mode.R;
+			case GL_RGB:
+				return Mode.RGB;
+			case GL_RGBA:
+				return Mode.RGBA;
+			default: return Mode.LOADED;
+		}
+	}
 
 	private this(string name, int width, int height) {
 		this.name = name;
 		this.width = width;
 		this.height = height;
+
+		this.mode = Mode.LOADED;
 	}
 
-	this(int width, int height, uint mode = GL_RGBA) {
+	this(int width, int height, uint mode = GL_RGBA, bool generate = true) {
 		glGenTextures(1, &id);
 		glBindTexture(GL_TEXTURE_2D, id);
 
@@ -50,41 +61,111 @@ struct Texture
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
 		this.width = width;
 		this.height = height;
-
-		switch(mode) {
-		case GL_RED:
-			this.mode = Mode.R;
-			break;
-		case GL_RGB:
-			this.mode = Mode.RGB;
-			break;
-		case GL_RGBA:
-			this.mode = Mode.RGBA;
-			break;
-		default: assert(0);
-		}
+		glMode = mode;
+		this.mode = glModeToEnum(mode);
 
 		this.pixels = new ubyte[width * height * cast(uint)this.mode];
 		this.pixels[0..$] = 255;
 
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, mode, GL_UNSIGNED_BYTE, cast(void *)pixels.ptr);
+		if(generate) glTexImage2D(GL_TEXTURE_2D, 0, glMode, width, height, 0, glMode, GL_UNSIGNED_BYTE, cast(void *)pixels.ptr);
 
 		glBindTexture(GL_TEXTURE_2D, 0);
 	}
 
-	void bind(int level = 0) {
-		if(_isDirty) PixelChangeFlush();
+	void bind(size_t level = 0) {
+		//if(_isDirty) PixelChangeFlush();
 
-		glActiveTexture(GL_TEXTURE0 + level);
+		glActiveTexture(GL_TEXTURE0 + cast(GLint)level);
 		glBindTexture(GL_TEXTURE_2D, id);
 	}
 
 	void unbind() const {
 		glBindTexture(GL_TEXTURE_2D, 0);
 		glActiveTexture(GL_TEXTURE0);
+	}
+
+	void generate() {
+		glBindTexture(GL_TEXTURE_2D, id);
+		glTexImage2D(GL_TEXTURE_2D, 0, glMode, width, height, 0, glMode, GL_UNSIGNED_BYTE, cast(void *)pixels.ptr);
+
+		switch(glMode) {
+			case GL_RED:
+				this.mode = Mode.R;
+				break;
+			case GL_RGB:
+				this.mode = Mode.RGB;
+				break;
+			case GL_RGBA:
+				this.mode = Mode.RGBA;
+				break;
+			default: assert(0);
+		}
+	}
+
+	static Texture generateDepthTexture(int width, int height) {
+		Texture texture = new Texture(null, width, height);
+		texture.mode = Mode.DEPTH;
+
+		// create a depth texture
+		glGenTextures(1, &texture.id);
+		glBindTexture(GL_TEXTURE_2D, texture.id);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, null);
+
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST); 
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+		glBindTexture(GL_TEXTURE_2D, 0);
+
+		return texture;
+	}
+
+	static Texture generateColorTexture(int width, int height, uint mode = GL_RGBA) {
+		Texture texture = new Texture(null, width, height);
+		texture.mode = glModeToEnum(mode);
+
+		// create a color texture
+		glGenTextures(1, &texture.id);
+		glBindTexture(GL_TEXTURE_2D, texture.id);
+		glTexImage2D(GL_TEXTURE_2D, 0, mode, width, height, 0, mode, GL_UNSIGNED_BYTE, null);
+
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST); 
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+		glBindTexture(GL_TEXTURE_2D, 0);
+
+		return texture;
+	}
+
+	void clear(Color color) {
+		if(mode == Mode.R) {
+			pixels[0 .. $] = color.r;
+		} else if(mode == Mode.RGB) {
+			foreach(i; 0 .. pixels.length / 3) {
+				pixels[i * 3] = color.r;
+				pixels[i * 3 + 1] = color.g;
+				pixels[i * 3 + 2] = color.b;
+			}
+		} else if(mode == Mode.RGBA) {
+			foreach(i; 0 .. pixels.length / 4) {
+				pixels[i * 4] = color.r;
+				pixels[i * 4 + 1] = color.g;
+				pixels[i * 4 + 2] = color.b;
+				pixels[i * 4 + 3] = color.a;
+			}
+		}
+
+		if(id != 0) {
+			glBindTexture(GL_TEXTURE_2D, id);
+			glTexImage2D(GL_TEXTURE_2D, 0, glMode, width, height, 0, glMode, GL_UNSIGNED_BYTE, cast(void *)pixels.ptr);
+		}
 	}
 
 	void changePixel(int x, int y, Color color) in {assert(mode != Mode.LOADED);}
@@ -94,16 +175,50 @@ struct Texture
 			pixels[(x + y * width) * 4 + 1] = color.g;
 			pixels[(x + y * width) * 4 + 2] = color.b;
 			pixels[(x + y * width) * 4 + 3] = color.a;
-			glTextureSubImage2D(id, 0, x, y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, &pixels[(x + y * width) * 4]);
+			if(id != 0) glTextureSubImage2D(id, 0, x, y, 1, 1, glMode, GL_UNSIGNED_BYTE, &pixels[(x + y * width) * 4]);
 		} else if(mode == Mode.RGB) {
 			pixels[(x + y * width) * 3] = color.r;
 			pixels[(x + y * width) * 3 + 1] = color.g;
 			pixels[(x + y * width) * 3 + 2] = color.b;
-			glTextureSubImage2D(id, 0, x, y, 1, 1, GL_RGB, GL_UNSIGNED_BYTE, &pixels[(x + y * width) * 3]);
+			if(id != 0) glTextureSubImage2D(id, 0, x, y, 1, 1, glMode, GL_UNSIGNED_BYTE, &pixels[(x + y * width) * 3]);
 		} else if(mode == Mode.R) {
 			pixels[x + y * width] = color.r;
-			glTextureSubImage2D(id, 0, x, y, 1, 1, GL_RED, GL_UNSIGNED_BYTE, &pixels[x + y * width]);
+			if(id != 0) glTextureSubImage2D(id, 0, x, y, 1, 1, glMode, GL_UNSIGNED_BYTE, &pixels[x + y * width]);
 		}
+	}
+
+	void changeSquare(vec2i bottom, vec2i size, ubyte[] color, bool reverseX = false, bool reverseY = false) in {assert(mode != Mode.LOADED); assert(size.x * size.y * mode == color.length, "Need to provide enough color elements to fill a " ~ to!string(size.x) ~ " and " ~ to!string(size.y) ~ " square of pixels");}
+	body {
+		if(size.x == 0 || size.y == 0) return;
+
+		glBindTexture(GL_TEXTURE_2D, id);
+		foreach(y; 0 .. size.y) {
+			foreach(x; 0 .. size.x) {
+				int colorx, colory;
+				if(reverseY) {
+					colory = (size.y - 1 - y);
+				}
+				else {
+					colory = y;
+				}
+				if(reverseX) {
+					colorx = (size.x - 1 - x);
+				} else {
+					colorx = x;
+				}
+
+				if(mode == Mode.RGBA) {
+					pixels[(x + bottom.x + (y + bottom.y) * width) * 4 .. (x + bottom.x + (y + bottom.y) * width + 1) * 4] = color[(colorx + colory * size.x) * 4 + (colorx + colory * size.x + 1) * 4];
+				} else if(mode == Mode.RGB) {
+					pixels[(x + bottom.x + (y + bottom.y) * width) * 3 .. (x + bottom.x + (y + bottom.y) * width + 1) * 3] = color[(colorx + colory * size.x) * 3 + (colorx + colory * size.x + 1) * 3];
+				} else if(mode == Mode.R) {
+					pixels[x + bottom.x + (y + bottom.y) * width] = color[colorx + colory * size.x];
+				}
+			}
+		}
+		if(id != 0) glTexImage2D(GL_TEXTURE_2D, 0, glMode, width, height, 0, glMode, GL_UNSIGNED_BYTE, cast(void *)pixels.ptr);
+		//glTextureSubImage2D(id, 0, 0, 0, width, height, glMode, GL_UNSIGNED_BYTE, pixels.ptr);
+		checkError();
 	}
 
 	/* Drawing to a texture ( for multiple pixels, draws only triangles ) */
@@ -213,6 +328,12 @@ struct Texture
 
 		checkError();
 	}
+
+	~this() {
+		Logger.info("Freeing texture : ");
+		Logger.info(name);
+		glDeleteTextures(1, &id);
+	}
 }
 
 Texture __loadTexture(string filename) {
@@ -226,35 +347,71 @@ Texture __loadTexture(string filename) {
 	
 	IFImage image = read_image_from_mem(data);
 	
-	Texture texture = Texture(filename, cast(int)image.w, cast(int)image.h);
+	Texture texture = new Texture(filename, cast(int)image.w, cast(int)image.h);
 
 	ubyte[] pixels = new ubyte[image.pixels.length];
-	size_t width = cast(size_t) (image.pixels.length / image.h);
-	foreach(i; 0..texture.height - 1) {
-		pixels[width * i .. width * (i + 1)] = image.pixels[width * (texture.height - 2 - i) .. width * (texture.height - 1 - i)];
+	foreach(i; 0 .. cast(size_t)image.h) {
+		pixels[cast(size_t)image.w * 4 * i .. cast(size_t)image.w * 4 * (i + 1)] = image.pixels[cast(size_t)image.w * 4 * (cast(size_t)image.h - 1 - i) .. cast(size_t)image.w * 4 * (cast(size_t)image.h - i)];
 	}
-	
+
 	glGenTextures(1, &texture.id);
 	glBindTexture(GL_TEXTURE_2D, texture.id);
-	
+
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, texture.width, texture.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, cast(void *)pixels);
-	
+
 	glBindTexture(GL_TEXTURE_2D, 0);
 	
 	checkError();
 
-	texture.mode = Texture.Mode.LOADED;
-
 	return texture;
 }
 
-void __freeTexture(Texture texture) {
-	Logger.info("Freeing texture : ");
-	Logger.info(texture.name);
-	glDeleteTextures(1, &texture.id);
+// Load a single image as imageCount many images
+Texture[count] __loadTexture(int count)(string filename) {
+	Logger.info("Loading textures : " ~ filename);
+
+	auto texturefile = internal(filename);
+
+	ubyte[] data = new ubyte[cast(uint) texturefile.size];
+	texturefile.rawRead(data);
+	texturefile.close();
+
+	IFImage image = read_image_from_mem(data);
+
+	Texture[count] textures;
+	size_t width = cast(size_t)image.w / count;
+	foreach(i; 0 .. count) {
+		textures[i] = new Texture(filename, cast(int)width, cast(int)image.h);
+	}
+
+	ubyte[][] pixels = new ubyte[][](count, image.pixels.length);
+
+	foreach(i; 0 .. cast(size_t)image.h) {
+		foreach(x; 0 .. count) {
+			pixels[x][width * 4 * i .. width * 4 * (i + 1)] = image.pixels[cast(size_t)image.w * 4 * (cast(size_t)image.h - 1 - i) + x * width * 4 .. cast(size_t)image.w * 4 * (cast(size_t)image.h - 1 - i) + (x + 1) * width * 4];
+		}
+	}
+
+	foreach(i; 0 .. count) {
+		glGenTextures(1, &textures[i].id);
+		glBindTexture(GL_TEXTURE_2D, textures[i].id);
+
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, cast(int)width, cast(int)image.h, 0, GL_RGBA, GL_UNSIGNED_BYTE, cast(void *)pixels[i]);
+
+		checkError();
+	}
+
+	return textures;
 }

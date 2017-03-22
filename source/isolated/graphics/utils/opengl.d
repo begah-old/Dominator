@@ -51,6 +51,13 @@ struct Color {
         return rgba[coord_to_index!coord];
     }
 
+	static Color Red = Color(255, 0, 0);
+	static Color Green = Color(0, 255, 0);
+	static Color Blue = Color(0, 0, 255);
+	static Color White = Color(255);
+	static Color Gray = Color(150, 150, 150, 255);
+	static Color Black = Color(0, 0, 0, 255);
+
 	template coord_to_index(char c) {
 		static if(c == 'r') enum coord_to_index = 0;
 		static if(c == 'g') enum coord_to_index = 1;
@@ -75,6 +82,12 @@ struct Color {
 			mixin("ub = cast(ubyte)(ub " ~ op ~ " rhs);");
 		}
 
+		return this;
+	}
+
+	Color opBinary(string op)(Color color) {
+		foreach(i; 0 .. 4)
+			mixin("rgba[i] = cast(ubyte)(rgba[i] " ~ op ~ " color.rgba[i]);");
 		return this;
 	}
 }

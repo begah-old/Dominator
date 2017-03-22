@@ -1,17 +1,15 @@
-module isolated.utils.timer;
+﻿module isolated.utils.timer;
 
 import core.time;
 
 struct Timer {
-	nothrow @safe :
-
 	private MonoTime time;
 
 	/* Time elapsed (in milliseconds) since timer creation or since last call to reset */
-	@property long elapsedTime() {
+	@property double elapsedTime() {
 		Duration timeElapsed = MonoTime.currTime - time;
 
-		return timeElapsed.total!"msecs";
+		return timeElapsed.total!"nsecs" / 1000000.0;
 	}
 
 	@property Timer reset() {

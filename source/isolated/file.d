@@ -1,5 +1,7 @@
 ﻿module isolated.file;
 
+public import std.stdio : File;
+
 import std.stdio;
 
 import isolated.utils.logger;
@@ -7,8 +9,6 @@ import std.file : thisExePath;
 import std.string : lastIndexOf;
 
 private {
-	File[string] files;
-
 	string Asset_Path = "";
 }
 
@@ -26,9 +26,7 @@ static this() {
 
 File internal(const(char[]) filename, string mode = "rb") {
 	try {
-		if((filename in files) is null) {
-			files[filename] = File(Asset_Path ~ filename, mode);
-		}
-		return files[filename];
+		Logger.info(Asset_Path ~ filename);
+		return File(Asset_Path ~ filename, mode);
 	} catch(Exception ex) {Logger.error(ex.msg); return File.init;}
 }

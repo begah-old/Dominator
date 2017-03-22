@@ -9,44 +9,32 @@ import isolated.graphics.utils.opengl;
 import isolated.math;
 import isolated.file;
 import isolated.graphics.vertexattribute;
-import isolated.utils.assets;
 import std.stdio;
 import std.array;
 import std.string;
 import isolated.utils.logger;
 
-alias ModelManager = ResourceManager!(Model, loadModel, freeModel, "isolated.graphics.g3d.model");
-alias ModelType = ModelManager.Handle;
-
-struct Model
+class Model
 {
 	Mesh mesh;
 	Shader shader;
-	TextureType[] textures;
+	Texture[] textures;
 
-	private {
-		this(Mesh mesh, Shader shader, TextureType[] textures...) {
-			if(mesh.isGenerated() == false)
-				mesh.generate(shader);
-			this.mesh = mesh;
-			this.shader = shader;
-			if(!(textures.length == 1 && textures[0].initialized == false)) {
-				this.textures.length = textures.length;
-				foreach(i; 0..textures.length) {
-					this.textures[i] = textures[i];
-				}
+	this(Mesh mesh, Shader shader, Texture[] textures...) in { assert(mesh !is null && shader !is null); }
+	body {
+		if(mesh.isGenerated() == false)
+			mesh.generate(shader);
+		this.mesh = mesh;
+		this.shader = shader;
+		if(textures.length != 1) {
+			this.textures.length = textures.length;
+			foreach(i; 0..textures.length) {
+				this.textures[i] = textures[i];
 			}
 		}
 	}
 
-	static ModelType create(Mesh mesh, Shader shader, TextureType[] textures...) in { assert(mesh !is null && shader !is null); }
-	body {
-		Model model = Model(mesh, shader, textures);
-
-		return ModelManager.add(model);
-	}
-
-	alias ModelManager.get load;
+	alias load = loadModel;
 
 	void begin() {
 		checkError();
@@ -65,7 +53,7 @@ struct Model
 		checkError();
 		shader.uniform("uTransform", transformation);
 
-		glDrawArrays(GL_TRIANGLES, 0, mesh.vertexCount);
+		glDrawArrays(GL_TRIANGLES, 0, cast(GLint)mesh.vertexCount);
 		checkError();
 	}
 
@@ -113,7 +101,7 @@ public {
 			vec3i[] facesNormals;
 			vec3i[] facesTextcoords;
 
-			TextureType texture;
+			Texture texture;
 
 			try {
 				foreach(line; modelFile.byLine) {
@@ -159,7 +147,7 @@ public {
 							}
 							break;
 						case "mtllib":
-							int ind = lastIndexOf(filename, '/');
+							size_t ind = lastIndexOf(filename, '/');
 							auto MaterialFile = internal(ind == -1 ? splits[1] : filename[0 .. ind + 1] ~ splits[1], "rb");
 
 							foreach(line2; MaterialFile.byLine) {
@@ -183,7 +171,7 @@ public {
 					}
 				}
 			} catch(Exception ex) {
-				return Model.init;
+				return null;
 			}
 
 			Mesh mesh = new Mesh();
@@ -258,15 +246,11 @@ public {
 				}
 			}
 
-			return Model(mesh, shader, texture);
-		} catch(Exception ex) {return Model.init;}
+			return new Model(mesh, shader, texture);
+		} catch(Exception ex) {return null;}
 	}
 
 	Model loadColladaModel(string filename) {
-		return Model.init;
+		return null;
 	}
-}
-
-void freeModel(Model model) {
-	Logger.info("Hello : " ~ model.textures[0].name);
 }

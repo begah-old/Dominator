@@ -11,8 +11,6 @@ class CameraController
 
 	float speed = 0.05;
 
-	nothrow @safe :
-
 	this(Camera camera, Window window)
 	{
 		this.camera = camera;

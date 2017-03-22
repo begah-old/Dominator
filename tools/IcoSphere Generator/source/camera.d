@@ -9,6 +9,8 @@ class Camera
 		const float NEAR_PLANE = 0.1f;
 		const float FAR_PLANE = 1000;
 		const float FOV = 70;
+		
+		const float PI_2 = PI / 2.0f;
 
 		vec3 _translation;
 		float _pitch = 0, _yaw = 0; // pitch ( look up and down ), yaw ( rotate around )
@@ -85,27 +87,8 @@ class Camera
 		_dirty = true;
 	}
 
-	/// Move smoothly the camera to a new position to look at a target. Allows to pass time wished for translation animation and rotation animation
-	void moveToLookAt(vec3 targetPosition, vec3 targetLookAt, float translationTime = 2, float rotationTime = 4) {
-		vec2 tempRot = vec2(_pitch, _yaw);
-		_targetedTranslation = _translation;
-		_translation = targetPosition;
-
-		lookAt(targetLookAt);
-
-		_translation = _targetedTranslation;
-
-		_targetedTranslation = targetPosition;
-		_targetedRotation = vec2(_pitch, _yaw);
-		_pitch = tempRot.x; _yaw = tempRot.y;
-
-		_targetSpeed = vec2((_targetedTranslation - _translation).magnitude / translationTime / 1000.0f, (_targetedRotation - vec2(_pitch, _yaw)).magnitude / rotationTime / 1000.0f);
-
-		_isMoving = true;
-	}
-
 	// Update the camera matrix and position. Delta time is in milli-seconds
-	void update(float delta) {
+	void update() {
 		if(_dirty) {
 			projectionMatrix = mat4.perspective(viewport.x, viewport.y, FOV, abs(NEAR_PLANE), abs(FAR_PLANE));
 
@@ -115,49 +98,6 @@ class Camera
 			viewMatrix.rotatex(-pitch);
 
 			_dirty = false;
-		}
-
-		if(_isMoving) {
-			vec3 direction = _targetedTranslation - _translation;
-			float travelSpeed = _targetSpeed.x * delta;
-
-			if(travelSpeed >= direction.magnitude) {
-				_translation = _targetedTranslation;
-				_targetSpeed.x = 0;
-
-				_dirty = true;
-			} else if(_targetSpeed.x != 0) {
-				_translation += travelSpeed * direction.normalized;
-
-				_dirty = true;
-			}
-
-			vec2 rotDirection = _targetedRotation - vec2(_pitch, _yaw);
-			travelSpeed = _targetSpeed.y * delta;
-
-			if(abs(rotDirection.x) <= travelSpeed) {
-				_pitch = _targetedRotation.x;
-				rotDirection.x = 0;
-			} else {
-				if(rotDirection.x < 0) _pitch -= travelSpeed;
-				else _pitch += travelSpeed;
-			}
-
-			if(abs(rotDirection.y) <= travelSpeed) {
-				_yaw = _targetedRotation.y;
-				rotDirection.y = 0;
-			} else {
-				if(rotDirection.y < 0) _yaw -= travelSpeed;
-				else _yaw += travelSpeed;
-			}
-
-			if(rotDirection.x == 0 && rotDirection.y == 0)
-				_targetSpeed.y = 0;
-
-			if(_targetSpeed.x == 0 && _targetSpeed.y == 0)
-				_isMoving = false;
-
-			_dirty = true;
 		}
 	}
 

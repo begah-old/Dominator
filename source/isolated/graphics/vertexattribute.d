@@ -18,17 +18,29 @@ class VertexAttribute
 		BiNormal = 256
 	}
 
-	int vertexSize;
+	size_t vertexSize;
 	float[] data;
 	Usage usage;
+	size_t vaoIndex; // Index in vao set when mesh is generated
 
 	GLuint vbo;
 
-	private bool isDynamic = false;
+	bool isDynamic = false;
+
+	private bool isDirty;
+	private size_t indexStart, indexEnd;
 
 @trusted nothrow :
 
-	this(Usage usage, int vertexSize) {
+	this(VertexAttribute other) {
+		this.vertexSize = other.vertexSize;
+		this.data = other.data.dup;
+		this.usage = other.usage;
+		this.vaoIndex = other.vaoIndex;
+		this.isDynamic = other.isDynamic;
+	}
+
+	this(Usage usage, size_t vertexSize) {
 		this.usage = usage;
 		this.vertexSize = vertexSize;
 	}
@@ -73,9 +85,19 @@ class VertexAttribute
 		return this;
 	}
 
-	VertexAttribute set(float[] data...) in { assert(data.length % vertexSize == 0, "Adding data to vertex attribute needs to be divisible by " ~ to!string(vertexSize)); }
+	VertexAttribute set(float[] data) in { assert(data.length % vertexSize == 0, "Adding data to vertex attribute needs to be divisible by " ~ to!string(vertexSize)); }
 	body {
-		this.data ~= data;
+		this.data = data;
+
+		return this;
+	}
+
+	VertexAttribute replace(size_t start, size_t end, float[] data...) in { assert(data.length % vertexSize == 0, "Replacing data to vertex attribute needs to be divisible by " ~ to!string(vertexSize)); }
+	body {
+		this.data[start * vertexSize .. start * vertexSize + data.length] = data;
+		if(indexStart > start) indexStart = start;
+		if(indexEnd < end) indexEnd = end;
+		isDirty = true;
 
 		return this;
 	}
@@ -84,19 +106,33 @@ class VertexAttribute
 		return data.length / vertexSize;
 	}
 
-	VertexAttribute generate(bool generateDynamic = false) {
+	VertexAttribute toggleDynamic() @property { 
+		isDynamic = !isDynamic; 
+		return this;
+	}
+
+	VertexAttribute generate() {
 		if(vbo != GLuint.init && !this.isDynamic) {
 			glDeleteBuffers(1, &vbo);
 		} else if(vbo != GLuint.init && this.isDynamic) {
 			glBufferData(GL_ARRAY_BUFFER, data.length * float.sizeof, data.ptr, GL_DYNAMIC_DRAW);
 		} else {
-			this.isDynamic = generateDynamic;
-
 			glGenBuffers(1, &vbo);
 			glBindBuffer(GL_ARRAY_BUFFER, vbo);
-			glBufferData(GL_ARRAY_BUFFER, data.length * float.sizeof, data.ptr, generateDynamic ? GL_DYNAMIC_DRAW : GL_STATIC_DRAW);
+			glBufferData(GL_ARRAY_BUFFER, data.length * float.sizeof, data.ptr, this.isDynamic ? GL_DYNAMIC_DRAW : GL_STATIC_DRAW);
 		}
+
+		isDirty = false;
+
 		return this;
+	}
+
+	void refresh() {
+		if(isDirty && isDynamic) {
+			glBindBuffer(GL_ARRAY_BUFFER, vbo);
+			glBufferSubData(GL_ARRAY_BUFFER, indexStart * vertexSize * float.sizeof,(indexEnd - indexStart) * vertexSize * float.sizeof, data.ptr + (indexStart * vertexSize * float.sizeof));
+			isDirty = false;
+		}
 	}
 
 	~this() {

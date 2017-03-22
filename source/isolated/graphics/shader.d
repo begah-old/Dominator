@@ -31,7 +31,7 @@ class Shader
 	}
 
 	this(string vertexFile, string fragmentFile) {
-		this(internal(vertexFile, "rb"), internal(fragmentFile, "rb"));
+		this(internal("Shaders/" ~ vertexFile, "rb"), internal("Shaders/" ~ fragmentFile, "rb"));
 	}
 
 	this(File vertexShader, File fragmentShader, bool closeFiles = true) {
@@ -139,6 +139,13 @@ class Shader
 		glUniform1i(uniforms[name], value);
 	}
 
+	void uniform(string name, ulong value) nothrow {
+		if(!(name in uniforms)) {
+			uniforms[name] = glGetUniformLocation(id, name.toStringz);
+		}
+		glUniform1i(uniforms[name], cast(GLint)value);
+	}
+
 	void uniform(string name, mat4 matrix) nothrow {
 		if(!(name in uniforms)) {
 			uniforms[name] = glGetUniformLocation(id, name.toStringz);
@@ -240,7 +247,7 @@ class Shader
 		}
 
 		void analyzeAttributes(const(char)[] vertexSource) {
-			int index = vertexSource.indexOf("in", CaseSensitive.yes);
+			size_t index = vertexSource.indexOf("in", CaseSensitive.yes);
 			const(char)[] source = vertexSource;
 
 			string attributeName = "in ";
@@ -258,7 +265,7 @@ class Shader
 
 					size_t location = vertexAttributes.length;
 
-					int ind = lastIndexOf(source[0 .. index], '\n');
+					size_t ind = lastIndexOf(source[0 .. index], '\n');
 					ind = ind == -1 ? 0 : ind + 1;
 					const(char)[] locationSource = source[ind .. index];
 

@@ -37,9 +37,10 @@ nothrow @trusted :
 		foreach(attribute; attributes) {
 			foreach(usage; shader.vertexAttributes) {
 				if(attribute.usage == usage) {
+					attribute.vaoIndex = usage.location;
 					glBindBuffer(GL_ARRAY_BUFFER, attribute.vbo);
-					glEnableVertexAttribArray(usage.location);
-					glVertexAttribPointer(usage.location, attribute.vertexSize, GL_FLOAT, GL_FALSE, 0, null);
+					glEnableVertexAttribArray(cast(GLint)usage.location);
+					glVertexAttribPointer(cast(GLint)usage.location, cast(GLint)attribute.vertexSize, GL_FLOAT, GL_FALSE, 0, null);
 					break;
 				}
 			}
@@ -135,6 +136,12 @@ nothrow @trusted :
 
 		if(attributes & VertexAttribute.Usage.Normal)
 			mesh.add(VertexAttribute.Normal.add([-1, 0, 0, 0, 0, -1, 0, -1, 0, 0, 0, -1, -1, 0, 0, 0, -1, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1]));
+
+		if(attributes & VertexAttribute.Usage.ColorPacked) {
+			import std.range : repeat;
+			import std.array : array;
+			mesh.add(VertexAttribute.ColorPacked.add(255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255));
+		}
 
 		return mesh;
 	}

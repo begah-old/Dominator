@@ -4,70 +4,51 @@ import std.stdio;
 import std.exception;
 import std.conv;
 import std.string;
+import core.memory : GC;
 
-import isolated.math;
-import isolated.math.boundingbox;
+import shared_memory;
+import updater;
+import renderer;
+
 import isolated.window;
-import isolated.utils.logger;
-import isolated.graphics.utils.opengl;
-import isolated.graphics.shader;
-import isolated.graphics.mesh;
-import isolated.graphics.vertexattribute;
-import isolated.graphics.g3d.model;
-import isolated.graphics.g3d.scene3d;
-import isolated.graphics.camera.perspective;
-import isolated.graphics.g3d.modelinstance;
-import isolated.graphics.camera.controller;
-import isolated.graphics.texture;
 import isolated.utils.timer;
+import isolated.graphics.texture;
+import isolated.graphics.g3d.model;
 
-import dominator.game;
-
-Window window;
+import isolated.gui.builder;
+import menu.main;
+import dominator.main;
 
 int main() {
-	window = new Window("Dominator");
-	window.show();
+	mainWindow = new Window("Dominator");
+	mainWindow.show();
 
-	Game game = new Game();
+	currentScreen = new MainMenu();
+	lastScreen = null;
 
-	core.memory.GC.collect();
+	GC.collect();
 
-	Timer timer = Timer();
-	long lastFrameTime;
-	long updateAndRenderTime;
-	long initialSetupTime;
+	mainTimer = Timer().reset;
 
-	while(window.shouldClose() == false) {
-		timer = timer.reset();
+	UpdateThread updateThread = new UpdateThread();
+	RenderThread renderThread = new RenderThread();
 
-        glViewport(0, 0, window.screenDimension.x, window.screenDimension.y);
-    	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-    	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+	UpdateThread.addMethod(&currentScreen.initUpdate);
+	RenderThread.addMethod(&currentScreen.initRender);
 
-		initialSetupTime = timer.elapsedTime;
+	updateThread.start();
+	renderThread.start();
 
-		checkError();
-
-		game.update(lastFrameTime);
-		game.render();
-
-		updateAndRenderTime = timer.elapsedTime;
-
-		checkError();
-		window.refresh();
-
-		core.memory.GC.collect();
-
-		lastFrameTime = timer.elapsedTime;
-
-		//Logger.info("Total time : " ~ lastFrameTime.to!string ~ " while it took " ~ updateAndRenderTime.to!string ~ " time to update and render and " ~ initialSetupTime.to!string ~ " to set up next frame");
+	if(currentScreen) {
+		currentScreen.destroyUpdate(0);
+		currentScreen.destroyRender(0);
+	}
+	if(lastScreen) {
+		lastScreen.destroyUpdate(0);
+		lastScreen.destroyRender(0);
 	}
 
-	ModelManager.purge();
-	TextureManager.purge();
-
-	window.close();
+	mainWindow.close();
 	readln();
 
 	return 0;

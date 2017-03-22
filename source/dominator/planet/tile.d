@@ -1,4 +1,4 @@
-module dominator.planet.tile;
+﻿module dominator.planet.tile;
 
 import isolated.math;
 import isolated.graphics.utils.opengl;
@@ -8,21 +8,16 @@ import dominator.planet.planet;
 import dominator.planet.biome;
 
 struct Tile {
-	private size_t _tileID;
-	ref size_t tileID() @property nothrow @safe @nogc { return _tileID; }
+	private size_t _id;
+	ref size_t id() @property { return _id; }
 
-	private Planet _planet;
+	Planet planet;
 
 	private vec3[3] _vertices;
-	vec3[3] vertices() nothrow @property @nogc @safe {return _vertices;}
+	vec3[3] vertices() @property {return _vertices;}
 
 	private vec3 _normal;
-	vec3 normal() nothrow @property @nogc @safe {return _normal;}
-
-	private vec2[3] _texturecoords;
-	vec2[3] texturecoords() nothrow @property @nogc @safe {return _texturecoords;}
-
-	private vec2[3] _colorTexturecoords; /* Texture coordinates to utilise when coloring texture, makes sure all pixels are colored */
+	vec3 normal() @property {return _normal;}
 
 	Color _groundColor;
 
@@ -30,21 +25,19 @@ struct Tile {
 
 	private Biome _biome;
 	Biome _newBiome;
-	ref Biome biome() nothrow @property @nogc @safe {return _biome;}
+	ref Biome biome() @property {return _biome;}
 
 	Tile*[12] neighbours;
 
-	this(size_t tileID, Planet planet, vec2i textureSize) {
-		this._tileID = tileID;
-		this._planet = planet;
+	this(size_t id, Planet planet) {
+		this._id = id;
+		this.planet = planet;
 
-		_biome = Biome(Biome.Types.PLAIN, 3);
+		_biome = Biome(Biome.Types.PLAIN, 3, Biome.Types.PLAIN);
 		_newBiome = _biome;
 
-		_vertices = _planet.icoSphere.positions[_tileID * 3 .. (_tileID + 1) * 3];
-		_normal = _planet.icoSphere.normals[_tileID * 3];
-		_texturecoords = _planet.icoSphere.texturecoords[_tileID * 3 .. (_tileID + 1) * 3];
-		_colorTexturecoords = _planet.icoSphere.texturecoordOffsets[_tileID * 3 .. (_tileID + 1) * 3];
+		_vertices = planet.icoSphere.positions[id * 3 .. (id + 1) * 3];
+		_normal = planet.icoSphere.normals[id * 3];
 
 		neighbours = getNeighbours();
 
@@ -53,7 +46,7 @@ struct Tile {
 
 	/* Called periodicly, not every frame. time is in milliseconds and is the time since the last call of this function 
 		Update the biome*/
-	void updateBiome(long time) {
+	void updateBiome(double time) {
 		const float BIOME_PRESSURE_CONSTANT = 10.0f;
 		_newBiome = _biome;
 
@@ -80,33 +73,40 @@ struct Tile {
 
 		_newBiome.biomeStrengthRef -= totalPressure;
 		if(_newBiome.biomeStrength < 0) {
+			_newBiome.nextBiomeType = _newBiome.biomeType;
 			_newBiome.biomeType = maxPressureID;
 			_newBiome.biomeStrengthRef *= -1.0f;
-		} else if(_newBiome.biomeStrength > Biome.Max_Strenght)
-			_newBiome.biomeStrengthRef = Biome.Max_Strenght;
+		} else {
+			if(_newBiome.biomeStrength > Biome.Max_Strenght)
+				_newBiome.biomeStrengthRef = Biome.Max_Strenght;
+			_newBiome.nextBiomeType = maxPressureID;
+		}
 
 		setColor(_newBiome.calculateColor());
 	}
 
-	void update(float time) {
+	void update(double time) {
 		_biome = _newBiome;
 	}
 
-	void setColor(Color color) nothrow {
-		_planet.texture.changePixels(_colorTexturecoords[0],
-								  _colorTexturecoords[1],
-								  _colorTexturecoords[2],
-								  color);
+	void setColor(Color color) {
 		_groundColor = color;
+
+		planet._colorAttributes.replace(id * 3, id * 3, [color.r / 255.0f, color.g / 255.0f, color.b / 255.0f, color.a / 255.0f, color.r / 255.0f, color.g / 255.0f, color.b / 255.0f, color.a / 255.0f, color.r / 255.0f, color.g / 255.0f, color.b / 255.0f, color.a / 255.0f]);
+	}
+
+	void setBiome(Biome biome) {
+		_biome = _newBiome = biome;
+		setColor(biome.calculateColor());
 	}
 
 	/// Return the vertices in common between the two tiles
-	vec3[3] commonVertices(size_t otherTile) @trusted nothrow @nogc {
+	vec3[3] commonVertices(size_t otherTile) {
 		vec3[3] commonVertices = vec3(0);
 		size_t index;
 
 		foreach(v1; vertices) {
-			foreach(v2; _planet.tiles[otherTile].vertices) {
+			foreach(v2; planet.tiles[otherTile].vertices) {
 				if(v1 == v2) {
 					commonVertices[index++] = v1;
 					break;
@@ -118,41 +118,41 @@ struct Tile {
 	}
 
 	/// Find all tiles sharing atleast one vertex with given tile
-	Tile*[12] getNeighbours() @trusted nothrow @nogc {
+	Tile*[12] getNeighbours() {
 		Tile*[12] neighbours;
 		neighbours[] = null;
 		size_t index;
 
-		if(tileID < 5) {
+		if(id < 5) {
 			// Place all tiles in first layer as neighbours
 			foreach(t; 0 .. 5) {
-				if(t == tileID) continue;
-				neighbours[index++] = _planet.tiles + t;
+				if(t == id) continue;
+				neighbours[index++] = planet.tiles + t;
 			}
 
-			size_t middleNeighbour = _planet.icoSphere.Tile_NeighbourDown(tileID); // Triangle just under it
+			size_t middleNeighbour = planet.icoSphere.Tile_NeighbourDown(id); // Triangle just under it
 			for(int i = -3; i <= 3; i++) {
-				neighbours[index++] = _planet.tiles + _planet.icoSphere.Tile_ToLevel(middleNeighbour + i, 2);
+				neighbours[index++] = planet.tiles + planet.icoSphere.Tile_ToLevel(middleNeighbour + i, 2);
 			}
-		} else if(tileID >= _planet.tileCount - 5) {
+		} else if(id >= planet.tileCount - 5) {
 			// Place all tiles in last layer as neighbours
-			size_t lastLayer = _planet.tileCount - 5;
+			size_t lastLayer = planet.tileCount - 5;
 			foreach(t; 0 .. 5) {
-				if(t == tileID - lastLayer) continue;
-				neighbours[index++] = _planet.tiles + (lastLayer + t);
+				if(t == id - lastLayer) continue;
+				neighbours[index++] = planet.tiles + (lastLayer + t);
 			}
 
-			size_t middleNeighbour = _planet.icoSphere.Tile_NeighbourUp(tileID); // Triangle just above it
+			size_t middleNeighbour = planet.icoSphere.Tile_NeighbourUp(id); // Triangle just above it
 			for(int i = -3; i <= 3; i++) {
-				neighbours[index++] = _planet.tiles + _planet.icoSphere.Tile_ToLevel(middleNeighbour + i, _planet.icoSphere.levelCount - 1 );
+				neighbours[index++] = planet.tiles + planet.icoSphere.Tile_ToLevel(middleNeighbour + i, planet.icoSphere.levelCount - 1 );
 			}
 		} else {
 			/// Returns number of vertices shared by tiles
-			size_t pointsShared(size_t tileID, size_t neighbourID) @trusted nothrow @nogc {
+			size_t pointsShared(size_t tileID, size_t neighbourID) {
 				size_t count;
 
-				foreach(v1; _planet.icoSphere.positions[tileID * 3 .. (tileID + 1) * 3]) {
-					foreach(v2; _planet.icoSphere.positions[neighbourID * 3 .. (neighbourID + 1) * 3]) {
+				foreach(v1; planet.icoSphere.positions[tileID * 3 .. (tileID + 1) * 3]) {
+					foreach(v2; planet.icoSphere.positions[neighbourID * 3 .. (neighbourID + 1) * 3]) {
 						if(v1 == v2) count++;
 					}
 				}
@@ -160,34 +160,34 @@ struct Tile {
 				return count;
 			}
 
-			void put(size_t tile) @trusted nothrow @nogc {
-				neighbours[index++] = _planet.tiles + tile;
+			void put(size_t tile) {
+				neighbours[index++] = planet.tiles + tile;
 			}
 
-			size_t levelID = _planet.icoSphere.Tile_Level(tileID);
+			size_t levelID = planet.icoSphere.Tile_Level(id);
 
 			// Check left tiles
 			foreach(i; -4 .. 5) {
-				if(i && pointsShared(tileID, _planet.icoSphere.Tile_ToLevel(tileID + i, levelID))) {
-					put(_planet.icoSphere.Tile_ToLevel(tileID + i, levelID));
+				if(i && pointsShared(id, planet.icoSphere.Tile_ToLevel(id + i, levelID))) {
+					put(planet.icoSphere.Tile_ToLevel(id + i, levelID));
 				}
 			}
 
 			// Check above tiles
-			size_t currentTile = _planet.icoSphere.Tile_NeighbourUp(tileID);
+			size_t currentTile = planet.icoSphere.Tile_NeighbourUp(id);
 
 			foreach(i; -3 .. 4) {
-				if(pointsShared(tileID, _planet.icoSphere.Tile_ToLevel(currentTile + i, levelID - 1))) {
-					put(_planet.icoSphere.Tile_ToLevel(currentTile + i, levelID - 1));
+				if(pointsShared(id, planet.icoSphere.Tile_ToLevel(currentTile + i, levelID - 1))) {
+					put(planet.icoSphere.Tile_ToLevel(currentTile + i, levelID - 1));
 				}
 			}
 
 			// Check downard tiles
-			currentTile = _planet.icoSphere.Tile_NeighbourDown(tileID);
+			currentTile = planet.icoSphere.Tile_NeighbourDown(id);
 
 			foreach(i; -3 .. 4) {
-				if(pointsShared(tileID, _planet.icoSphere.Tile_ToLevel(currentTile + i, levelID + 1))) {
-					put(_planet.icoSphere.Tile_ToLevel(currentTile + i, levelID + 1));
+				if(pointsShared(id, planet.icoSphere.Tile_ToLevel(currentTile + i, levelID + 1))) {
+					put(planet.icoSphere.Tile_ToLevel(currentTile + i, levelID + 1));
 				}
 			}
 		}

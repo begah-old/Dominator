@@ -1,5 +1,4 @@
 ﻿module isolated.graphics.camera.camera;
-
 import isolated.math;
 
 import isolated.utils.logger;
@@ -28,13 +27,11 @@ class Camera
 		mat4 projectionMatrix;
 	}
 
-	nothrow @safe @nogc :
-
 	this(vec2i viewport, vec3 position) {
 		this._translation = position;
 		this.viewport = viewport;
 
-		_yaw = std.math.PI_2;
+		_yaw = PI_2;
 	}
 
 	/// Translate camera by given amount
@@ -43,7 +40,7 @@ class Camera
 	}
 
 	/// Translate camera by given amount
-	void translate(vec3 pos) nothrow {
+	void translate(vec3 pos) {
 		this._translation = this._translation + pos;
 		_dirty = true;
 
@@ -56,7 +53,7 @@ class Camera
 	}
 
 	/// Set camera translation to given position
-	void setTranslation(vec3 pos) nothrow {
+	void setTranslation(vec3 pos) {
 		this._translation = pos;
 		_dirty = true;
 
@@ -121,18 +118,32 @@ class Camera
 	/// Get ray from camera at x and y position on screen
 	Ray getRay(double x, double y) {
 		// Algorithm found at site : http://antongerdelan.net/opengl/raycasting.html
+		calculate();
+
 		vec3 ray_nds = vec3((2.0f * x) / viewport.x - 1.0f, (2.0f * y) / viewport.y - 1.0f, 1.0f);
 		vec4 ray_clip = vec4(ray_nds.xy, -1.0f, 1.0f);
 		vec4 ray_eye = projectionMatrix.inverse * ray_clip;
 		ray_eye = vec4(ray_eye.xy, -1.0f, 0.0f);
 		vec3 ray_world = (viewMatrix.inverse * ray_eye).xyz;
 		ray_world.normalize();
-		
+
 		return Ray(_translation, ray_world);
 	}
 
-	// Update the camera matrix and position. Delta time is in milli-seconds
-	void update(float delta) {
+	/// Copy a camera's attribute to current camera
+	void set(Camera camera) {
+		_translation = camera._translation;
+		_pitch = camera._pitch;
+		_yaw = camera.yaw;
+		_dirty = true;
+		_isMoving = camera._isMoving;
+		_targetedRotation = camera._targetedRotation;
+		_targetedTranslation = camera._targetedTranslation;
+		_targetSpeed = camera._targetSpeed;
+	}
+
+	/// Update the camera rotation and position. Delta time is in milli-seconds
+	void update(double delta) {
 		if(_isMoving) {
 			vec3 direction = _targetedTranslation - _translation;
 			float travelSpeed = _targetSpeed.x * delta;
@@ -144,7 +155,7 @@ class Camera
 				_dirty = true;
 			} else if(_targetSpeed.x != 0) {
 				_translation += travelSpeed * direction.normalized;
-			
+
 				_dirty = true;
 			}
 
@@ -177,6 +188,10 @@ class Camera
 		}
 	}
 
+	void calculate() {
+
+	}
+
 	float yaw() {
 		return _yaw;
 	}
@@ -184,3 +199,4 @@ class Camera
 		return _pitch;
 	}
 }
+

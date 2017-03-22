@@ -1,4 +1,4 @@
-module isolated.math.ray;
+﻿module isolated.math.ray;
 
 import isolated.math;
 

@@ -263,12 +263,12 @@ class IsoSphere {
 		break;
 	}
 
-	// Put vertices in count-clockwise
+	// Put vertices in counter-clockwise
 	for(int i = 0; i < vertices.length; i += 3) {
 		vec3 middle = (vertices[i].position + vertices[i + 1].position + vertices[i + 2].position) / 3.0f;
 		camera.setTranslation(vertices[i].normal * 3);
 		camera.lookAt(middle);
-		camera.update(0);
+		camera.update();
 		if(!isCounterClockwise(vertices[i .. i + 3])) {
 			Vertex temp = vertices[i + 1];
 			vertices[i + 1] = vertices[i + 2];

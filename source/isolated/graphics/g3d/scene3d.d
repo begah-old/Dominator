@@ -14,7 +14,7 @@ import isolated.graphics.texture;
 class Scene3d
 {
 	PerspectiveCamera camera;
-	ModelInstance[][ModelType] instances;
+	ModelInstance[][Model] instances;
 
 	Shader shader;
 
@@ -40,7 +40,7 @@ class Scene3d
 		shader.uniform("uView", camera.viewMatrix);
 		shader.uniform("uProjection", camera.projectionMatrix);
 
-		foreach(ref model, ref instances; this.instances) {
+		foreach(model, ref instances; this.instances) {
 			model.begin();
 			foreach(instance; instances) {
 				instance.render();
